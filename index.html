@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Student Dashboard</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="A comprehensive student dashboard for managing courses, schedules, tasks, grades, and projects">
+    <meta name="theme-color" content="#6366f1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Student Hub">
+    
+    <!-- Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="icons/icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="icons/icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="96x96" href="icons/icon-96x96.png">
+    <link rel="apple-touch-icon" sizes="128x128" href="icons/icon-128x128.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="icons/icon-144x144.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192x192.png">
+    <link rel="apple-touch-icon" sizes="384x384" href="icons/icon-384x384.png">
+    <link rel="apple-touch-icon" sizes="512x512" href="icons/icon-512x512.png">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-72x72.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="icons/icon-72x72.png">
+    
+    <link rel="stylesheet" href="styles.css">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+</head>
+<body>
+    <!-- ===================================
+         AUTHENTICATION PAGES
+         =================================== -->
+    
+    <!-- Signup Page (First-Time Use) -->
+    <section class="auth-page" id="signup-page">
+        <div class="auth-container">
+            <div class="auth-header">
+                <div class="auth-logo">
+                    <i class="bi bi-mortarboard-fill"></i>
+                    <h1>Student Hub</h1>
+                </div>
+                <p>Create your student account</p>
+            </div>
+            
+            <form id="signupForm" class="auth-form">
+                <div class="form-group">
+                    <label for="signupStudentId">Student ID Number *</label>
+                    <input type="text" id="signupStudentId" placeholder="e.g., 2021-12345" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="signupName">Full Name *</label>
+                    <input type="text" id="signupName" placeholder="Enter your full name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="signupProgram">Program *</label>
+                    <input type="text" id="signupProgram" placeholder="e.g., BS Information Technology" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="signupSemester">Current Semester *</label>
+                    <select id="signupSemester" required>
+                        <option value="">Select Semester</option>
+                        <option value="1st Semester">1st Semester</option>
+                        <option value="2nd Semester">2nd Semester</option>
+                        <option value="Summer">Summer</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Profile Photo (Optional)</label>
+                    <div class="photo-upload-container">
+                        <div class="photo-preview" id="signupPhotoPreview">
+                            <i class="bi bi-person-circle"></i>
+                        </div>
+                        <div class="photo-upload-actions">
+                            <input type="file" id="signupPhoto" accept="image/*" style="display: none;">
+                            <button type="button" class="btn btn-secondary btn-sm" id="signupUploadBtn">
+                                <i class="bi bi-upload"></i> Upload Photo
+                            </button>
+                            <button type="button" class="btn btn-secondary btn-sm" id="signupRemoveBtn" style="display: none;">
+                                <i class="bi bi-trash"></i> Remove
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-block">
+                    <i class="bi bi-person-plus"></i> Create Account
+                </button>
+            </form>
+        </div>
+    </section>
+
+    <!-- Login Page -->
+    <section class="auth-page" id="login-page">
+        <div class="auth-container">
+            <div class="auth-header">
+                <div class="auth-logo">
+                    <i class="bi bi-mortarboard-fill"></i>
+                    <h1>Student Hub</h1>
+                </div>
+                <p>Welcome back! Enter your Student ID to continue</p>
+            </div>
+            
+            <form id="loginForm" class="auth-form">
+                <div class="form-group">
+                    <label for="loginStudentId">Student ID Number</label>
+                    <input type="text" id="loginStudentId" placeholder="Enter your Student ID" required autofocus>
+                </div>
+                
+                <div id="loginError" class="error-message" style="display: none;">
+                    <i class="bi bi-exclamation-circle"></i>
+                    <span>Invalid Student ID. Please try again.</span>
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-block">
+                    <i class="bi bi-box-arrow-in-right"></i> Login
+                </button>
+            </form>
+            
+            <div class="auth-footer">
+                <p>First time here? <a href="#" id="goToSignup">Create an account</a></p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================================
+         MAIN APPLICATION
+         =================================== -->
+    
+    <div id="app-container" style="display: none;">
+        <!-- Top Navigation Bar -->
+        <nav class="top-nav">
+            <div class="nav-left">
+                <button class="mobile-menu-toggle-left" id="mobileMenuToggle">
+                    <i class="bi bi-list"></i>
+                </button>
+                <div class="logo">
+                    <span>Student Hub</span>
+                </div>
+            </div>
+            
+            <div class="nav-right">
+                <div class="nav-links">
+                    <a href="#" class="nav-link active" data-page="dashboard">
+                        <i class="bi bi-speedometer2"></i>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="#" class="nav-link" data-page="admin">
+                        <i class="bi bi-gear-fill"></i>
+                        <span>Admin</span>
+                    </a>
+                    <a href="#" class="nav-link" data-page="projects">
+                        <i class="bi bi-code-square"></i>
+                        <span>Projects</span>
+                    </a>
+                </div>
+                <button class="theme-toggle-icon" id="themeToggle" title="Toggle Dark Mode">
+                    <i class="bi bi-moon-stars-fill"></i>
+                </button>
+                <button class="btn btn-secondary btn-sm" id="logoutBtn" title="Logout">
+                    <i class="bi bi-box-arrow-right"></i>
+                    <span class="logout-text">Logout</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Dashboard Page -->
+            <section class="page active" id="dashboard-page">
+                <!-- Profile Header -->
+                <div class="profile-header">
+                    <div class="profile-info">
+                        <div class="avatar" id="dashboardAvatar">
+                            <i class="bi bi-person-circle"></i>
+                        </div>
+                        <div class="profile-details">
+                            <h1 class="profile-name" id="displayName">Student Name</h1>
+                            <p class="profile-id" id="displayStudentId">ID: 2021-12345</p>
+                            <p class="profile-program" id="displayProgram">BS Information Technology</p>
+                            <p class="profile-year" id="displaySemester">1st Semester</p>
+                        </div>
+                    </div>
+                    <div class="quick-stats">
+                        <div class="stat-card">
+                            <i class="bi bi-book"></i>
+                            <div>
+                                <h3 id="totalCourses">0</h3>
+                                <p>Courses</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <i class="bi bi-list-check"></i>
+                            <div>
+                                <h3 id="totalTasks">0</h3>
+                                <p>Tasks</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <i class="bi bi-trophy"></i>
+                            <div>
+                                <h3 id="gpaDisplay">0.00</h3>
+                                <p>GPA/GWA</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dashboard Grid -->
+                <div class="dashboard-grid">
+                    <!-- Today's Overview Section (New!) -->
+                    <div class="dashboard-card today-overview-card" style="grid-column: 1 / -1;">
+                        <div class="card-header">
+                            <h2><i class="bi bi-calendar-day"></i> Today's Overview</h2>
+                            <span class="today-date" id="todayDate"></span>
+                        </div>
+                        <div class="card-content">
+                            <div class="today-grid">
+                                <!-- Today's Schedule -->
+                                <div class="today-section">
+                                    <h3><i class="bi bi-clock"></i> Today's Classes</h3>
+                                    <div id="todaySchedule" class="today-schedule">
+                                        <div class="empty-state-small">
+                                            <i class="bi bi-calendar-x"></i>
+                                            <p>No classes today</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Tasks Due Today/Soon -->
+                                <div class="today-section">
+                                    <h3><i class="bi bi-exclamation-circle"></i> Tasks Due Soon</h3>
+                                    <div id="todayTasks" class="today-tasks">
+                                        <div class="empty-state-small">
+                                            <i class="bi bi-check-circle"></i>
+                                            <p>No tasks due soon</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Schedule Section -->
+                    <div class="dashboard-card schedule-card">
+                        <div class="card-header">
+                            <h2><i class="bi bi-calendar-week"></i> Weekly Schedule</h2>
+                        </div>
+                        <div class="card-content">
+                            <div id="scheduleDisplay" class="schedule-display">
+                                <div class="empty-state">
+                                    <i class="bi bi-calendar-x"></i>
+                                    <p>No schedule yet. Add courses in Admin Panel!</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tasks Section -->
+                    <div class="dashboard-card tasks-card">
+                        <div class="card-header">
+                            <h2><i class="bi bi-check2-square"></i> Tasks</h2>
+                            <button class="btn btn-primary btn-sm" id="addTaskBtn">
+                                <i class="bi bi-plus-lg"></i> Add Task
+                            </button>
+                        </div>
+                        <div class="card-content">
+                            <div class="task-filters">
+                                <button class="filter-btn active" data-filter="all">All</button>
+                                <button class="filter-btn" data-filter="pending">Pending</button>
+                                <button class="filter-btn" data-filter="completed">Completed</button>
+                            </div>
+                            <div id="tasksList" class="tasks-list">
+                                <div class="empty-state">
+                                    <i class="bi bi-clipboard-x"></i>
+                                    <p>No tasks yet. Add one to get started!</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Grades Section -->
+                    <div class="dashboard-card grades-card">
+                        <div class="card-header">
+                            <h2><i class="bi bi-graph-up"></i> Grades & GPA</h2>
+                            <button class="btn btn-primary btn-sm" id="addGradeBtn">
+                                <i class="bi bi-plus-lg"></i> Add Grade
+                            </button>
+                        </div>
+                        <div class="card-content">
+                            <div class="gpa-display">
+                                <div class="gpa-circle">
+                                    <span class="gpa-value" id="gpaValue">0.00</span>
+                                    <span class="gpa-label">GPA/GWA</span>
+                                </div>
+                            </div>
+                            <div id="gradesList" class="grades-list">
+                                <div class="empty-state">
+                                    <i class="bi bi-file-earmark-bar-graph"></i>
+                                    <p>No grades recorded yet.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Achievements Section -->
+                    <div class="dashboard-card achievements-card">
+                        <div class="card-header">
+                            <h2><i class="bi bi-award"></i> Achievements</h2>
+                            <button class="btn btn-primary btn-sm" id="addAchievementBtn">
+                                <i class="bi bi-plus-lg"></i> Add
+                            </button>
+                        </div>
+                        <div class="card-content">
+                            <div id="achievementsList" class="achievements-list">
+                                <div class="empty-state">
+                                    <i class="bi bi-star"></i>
+                                    <p>No achievements yet. Start celebrating your wins!</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Dashboard Modal -->
+                <div class="modal-overlay" id="dashboardModal">
+                    <div class="modal">
+                        <div class="modal-header">
+                            <h2 id="dashboardModalTitle">Modal Title</h2>
+                            <button class="modal-close" id="dashboardModalClose">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                        <div class="modal-content" id="dashboardModalContent"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Admin Panel Page -->
+            <section class="page" id="admin-page">
+                <div class="page-header">
+                    <h1><i class="bi bi-gear-fill"></i> Admin Panel</h1>
+                    <p>Manage your courses and schedule</p>
+                </div>
+
+                <div class="admin-grid">
+                    <!-- Profile Quick View -->
+                    <div class="admin-card">
+                        <div class="card-header">
+                            <h2><i class="bi bi-person-badge"></i> Your Profile</h2>
+                            <button class="btn btn-primary btn-sm" id="editProfileBtn">
+                                <i class="bi bi-pencil"></i> Edit Profile
+                            </button>
+                        </div>
+                        <div class="card-content">
+                            <div class="profile-quick-view">
+                                <div class="profile-avatar" id="adminAvatar">
+                                    <i class="bi bi-person-circle"></i>
+                                </div>
+                                <div class="profile-info-admin">
+                                    <h3 id="adminDisplayName">Student Name</h3>
+                                    <p><strong>ID:</strong> <span id="adminDisplayId">2021-12345</span></p>
+                                    <p><strong>Program:</strong> <span id="adminDisplayProgram">BS Information Technology</span></p>
+                                    <p><strong>Semester:</strong> <span id="adminDisplaySemester">1st Semester</span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Course Management -->
+                    <div class="admin-card">
+                        <div class="card-header">
+                            <h2><i class="bi bi-book"></i> Course Management</h2>
+                            <button class="btn btn-primary btn-sm" id="addCourseBtn">
+                                <i class="bi bi-plus-lg"></i> Add Course
+                            </button>
+                        </div>
+                        <div class="card-content">
+                            <div id="coursesList" class="courses-list">
+                                <div class="empty-state">
+                                    <i class="bi bi-journal-x"></i>
+                                    <p>No courses added yet.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Schedule Management -->
+                    <div class="admin-card">
+                        <div class="card-header">
+                            <h2><i class="bi bi-calendar3"></i> Schedule Management</h2>
+                            <button class="btn btn-primary btn-sm" id="addScheduleBtn">
+                                <i class="bi bi-plus-lg"></i> Add Schedule
+                            </button>
+                        </div>
+                        <div class="card-content">
+                            <div id="scheduleList" class="schedule-list">
+                                <div class="empty-state">
+                                    <i class="bi bi-clock"></i>
+                                    <p>No schedules added yet.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Admin Modal -->
+                <div class="modal-overlay" id="adminModal">
+                    <div class="modal">
+                        <div class="modal-header">
+                            <h2 id="adminModalTitle">Modal Title</h2>
+                            <button class="modal-close" id="adminModalClose">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                        <div class="modal-content" id="adminModalContent"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Projects Page -->
+            <section class="page" id="projects-page">
+                <div class="page-header">
+                    <h1><i class="bi bi-code-square"></i> Programming Projects</h1>
+                    <p>Showcase your coding achievements and projects</p>
+                    <button class="btn btn-primary" id="addProjectBtn">
+                        <i class="bi bi-plus-lg"></i> Add Project
+                    </button>
+                </div>
+
+                <div id="projectsGrid" class="projects-grid">
+                    <div class="empty-state-large">
+                        <i class="bi bi-folder-x"></i>
+                        <h3>No projects yet</h3>
+                        <p>Start building and showcase your programming portfolio!</p>
+                    </div>
+                </div>
+                
+                <!-- Projects Modal -->
+                <div class="modal-overlay" id="projectsModal">
+                    <div class="modal">
+                        <div class="modal-header">
+                            <h2 id="projectsModalTitle">Modal Title</h2>
+                            <button class="modal-close" id="projectsModalClose">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                        <div class="modal-content" id="projectsModalContent"></div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Alert Container -->
+    <div class="alert-container" id="alertContainer"></div>
+
+    <!-- Confirmation Dialog -->
+    <div class="confirm-overlay" id="confirmOverlay">
+        <div class="confirm-dialog">
+            <div class="confirm-icon" id="confirmIcon">
+                <i class="bi bi-question-circle"></i>
+            </div>
+            <h3 id="confirmTitle">Confirm Action</h3>
+            <p id="confirmMessage">Are you sure you want to proceed?</p>
+            <div class="confirm-actions">
+                <button class="btn btn-secondary" id="confirmCancel">Cancel</button>
+                <button class="btn btn-primary" id="confirmOk">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Task Focus View (Full Screen Pomodoro) -->
+    <div class="focus-overlay" id="focusOverlay">
+        <div class="focus-container">
+            <button class="focus-close" id="focusClose">
+                <i class="bi bi-x-lg"></i>
+            </button>
+            
+            <div class="focus-header">
+                <div class="focus-task-info">
+                    <h1 id="focusTaskTitle">Task Title</h1>
+                    <div class="focus-task-meta">
+                        <span class="task-badge" id="focusTaskType">assignment</span>
+                        <span class="task-badge" id="focusTaskPriority">high</span>
+                        <span><i class="bi bi-book"></i> <span id="focusTaskCourse">Course</span></span>
+                        <span><i class="bi bi-calendar"></i> <span id="focusTaskDue">Due Date</span></span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="focus-timer">
+                <div class="focus-timer-circle" id="focusTimerCircle">
+                    <div class="focus-timer-time" id="focusTimerTime">25:00</div>
+                    <div class="focus-timer-label" id="focusTimerLabel">Ready to Focus</div>
+                </div>
+                
+                <div class="focus-timer-progress">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="focusProgressFill"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="focus-controls">
+                <div class="time-input-group">
+                    <label for="focusTimeInput">Set Timer (minutes):</label>
+                    <input type="number" id="focusTimeInput" value="25" min="1" max="120">
+                </div>
+                
+                <div class="focus-buttons">
+                    <button class="btn-focus btn-focus-primary" id="focusStart">
+                        <i class="bi bi-play-fill"></i> Start Focus
+                    </button>
+                    <button class="btn-focus btn-focus-secondary" id="focusPause" style="display: none;">
+                        <i class="bi bi-pause-fill"></i> Pause
+                    </button>
+                    <button class="btn-focus btn-focus-secondary" id="focusReset">
+                        <i class="bi bi-arrow-clockwise"></i> Reset
+                    </button>
+                </div>
+            </div>
+            
+            <div class="focus-stats">
+                <div class="stat-card-focus">
+                    <i class="bi bi-check-circle"></i>
+                    <div>
+                        <h3 id="focusSessionCount">0</h3>
+                        <p>Sessions Today</p>
+                    </div>
+                </div>
+                <div class="stat-card-focus">
+                    <i class="bi bi-clock-history"></i>
+                    <div>
+                        <h3 id="focusTotalTime">0</h3>
+                        <p>Minutes Focused</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
