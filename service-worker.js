@@ -1,7 +1,7 @@
 // Student Hub - Service Worker v1.0.9
 // Cache-First Strategy for Perfect Offline Support
 
-const CACHE_NAME = 'student-hub-v9';
+const CACHE_NAME = 'student-hub-v10';
 const BASE_PATH = '/student-hubv2';
 
 // Files to cache
