@@ -1,7 +1,7 @@
 // Student Hub - Service Worker v1.1.2
-// Fix: Blank page, footer padding, button size
+// Fix: Add button, profile layout, photo persistence, dark mode
 
-const CACHE_NAME = 'student-hub-v1.1.2';
+const CACHE_NAME = 'student-hub-v13';
 const BASE_PATH = '/student-hubv2';
 
 // Files to cache
