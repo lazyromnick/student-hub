@@ -21,6 +21,23 @@ const StorageManager = {
             localStorage.setItem(key, JSON.stringify(value));
             return true;
         } catch (error) {
+            // Handle QuotaExceededError (common on mobile with large base64 photos)
+            if (error.name === 'QuotaExceededError' || error.code === 22) {
+                console.warn('Storage quota exceeded for key:', key);
+                // If saving profile, try saving without photo
+                if (key === 'studentProfile' && value && value.photo) {
+                    try {
+                        // Save photo separately
+                        localStorage.setItem('studentPhoto', value.photo);
+                        const profileWithoutPhoto = { ...value, photo: '__STORED_SEPARATELY__' };
+                        localStorage.setItem(key, JSON.stringify(profileWithoutPhoto));
+                        console.log('Photo saved separately due to quota');
+                        return true;
+                    } catch (e2) {
+                        console.error('Failed to save even without photo:', e2);
+                    }
+                }
+            }
             console.error('Error writing to localStorage:', error);
             return false;
         }
@@ -54,6 +71,12 @@ const AppState = {
 
     init() {
         this.student = StorageManager.get('studentProfile');
+        // Restore photo if it was stored separately due to quota
+        if (this.student && this.student.photo === '__STORED_SEPARATELY__') {
+            const savedPhoto = localStorage.getItem('studentPhoto');
+            if (savedPhoto) this.student.photo = savedPhoto;
+            else this.student.photo = null;
+        }
         this.isLoggedIn = StorageManager.get('isLoggedIn') || false;
         this.courses = StorageManager.get('courses') || [];
         this.schedules = StorageManager.get('schedules') || [];
@@ -2050,8 +2073,10 @@ const ProjectManager = {
 
     render() {
         const container = document.getElementById('projectsGrid');
-        
+        const page = document.getElementById('projects-page');
+
         if (AppState.projects.length === 0) {
+            page.classList.add('projects-empty');
             container.innerHTML = `
                 <div class="empty-state-large">
                     <i class="bi bi-folder-x"></i>
@@ -2064,6 +2089,8 @@ const ProjectManager = {
             `;
             return;
         }
+
+        page.classList.remove('projects-empty');
         container.innerHTML = AppState.projects.map((project, index) => `
             <div class="project-card">
                 <div class="project-actions">
@@ -2282,8 +2309,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // Register Service Worker for PWA
-    // Temporarily disabled for debugging
-    // registerServiceWorker();
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/student-hubv2/service-worker.js')
+            .then(reg => console.log('✅ Service Worker registered:', reg.scope))
+            .catch(err => console.error('❌ Service Worker failed:', err));
+    }
 });
 
 // ===================================
