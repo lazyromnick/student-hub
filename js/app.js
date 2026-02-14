@@ -2064,7 +2064,6 @@ const ProjectManager = {
             `;
             return;
         }
-
         container.innerHTML = AppState.projects.map((project, index) => `
             <div class="project-card">
                 <div class="project-actions">
