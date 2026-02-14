@@ -1342,24 +1342,37 @@ h1, h2, h3, h4, h5, h6 {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: var(--spacing-lg) var(--spacing-xl);
+    padding: var(--spacing-md) var(--spacing-lg);
     border-bottom: 1px solid var(--border);
     background: var(--bg-tertiary);
+    gap: var(--spacing-sm);
+    flex-wrap: nowrap;
 }
 
 .card-header h2 {
-    font-size: 1rem;
+    font-size: 0.9375rem;
     font-weight: 700;
     display: flex;
     align-items: center;
-    gap: var(--spacing-sm);
+    gap: var(--spacing-xs);
     color: var(--text-primary);
     letter-spacing: -0.01em;
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .card-header h2 i {
     color: var(--primary);
-    font-size: 1.1rem;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.card-header .btn {
+    flex-shrink: 0;
+    white-space: nowrap;
 }
 
 .card-content {
@@ -2423,12 +2436,11 @@ h1, h2, h3, h4, h5, h6 {
     }
     
     .card-header {
-        flex-wrap: wrap;
-        gap: var(--spacing-sm);
+        padding: var(--spacing-sm) var(--spacing-md);
     }
     
     .card-header h2 {
-        font-size: 1rem;
+        font-size: 0.875rem;
     }
     
     .modal {
@@ -2553,6 +2565,414 @@ h1, h2, h3, h4, h5, h6 {
     border-top: 1px solid var(--border);
     margin-top: var(--spacing-xl);
     opacity: 0.6;
+}
+
+/* ===================================
+   NOTIFICATION BELL
+   =================================== */
+.notif-bell-btn {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-lg);
+    border: 1.5px solid var(--border);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.notif-bell-btn:hover {
+    border-color: var(--primary-light);
+    color: var(--primary);
+    background: var(--primary-glow);
+}
+
+.notif-bell-btn.has-notifs {
+    border-color: var(--primary);
+    color: var(--primary);
+    animation: bellRing 1s ease infinite;
+}
+
+@keyframes bellRing {
+    0%, 100% { transform: rotate(0deg); }
+    15%       { transform: rotate(15deg); }
+    30%       { transform: rotate(-12deg); }
+    45%       { transform: rotate(10deg); }
+    60%       { transform: rotate(-8deg); }
+    75%       { transform: rotate(5deg); }
+}
+
+.notif-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: #ef4444;
+    color: white;
+    font-size: 0.625rem;
+    font-weight: 800;
+    font-family: var(--font-display);
+    min-width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    border: 2px solid var(--bg-secondary);
+    animation: badgePop var(--transition-bounce);
+}
+
+@keyframes badgePop {
+    from { transform: scale(0); }
+    to   { transform: scale(1); }
+}
+
+/* ===================================
+   NOTIFICATION PANEL
+   =================================== */
+.notif-panel-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    background: transparent;
+}
+
+.notif-panel-overlay.active {
+    display: block;
+}
+
+.notif-panel {
+    position: fixed;
+    top: 64px;
+    right: var(--spacing-md);
+    width: 340px;
+    max-height: 70vh;
+    background: var(--bg-card);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-xl);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transform: translateY(-8px) scale(0.96);
+    opacity: 0;
+    pointer-events: none;
+    transition: all var(--transition-base);
+}
+
+.notif-panel.active {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+    pointer-events: all;
+}
+
+.notif-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-md) var(--spacing-lg);
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-tertiary);
+    flex-shrink: 0;
+}
+
+.notif-panel-header h3 {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    color: var(--text-primary);
+}
+
+.notif-panel-header h3 i {
+    color: var(--primary);
+}
+
+.notif-clear-btn {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+}
+
+.notif-clear-btn:hover {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.notif-panel-body {
+    overflow-y: auto;
+    flex: 1;
+    padding: var(--spacing-sm);
+}
+
+.notif-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-2xl) var(--spacing-lg);
+    color: var(--text-tertiary);
+    font-size: 0.875rem;
+}
+
+.notif-empty i {
+    font-size: 2rem;
+    opacity: 0.4;
+}
+
+.notif-item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-lg);
+    margin-bottom: 0.25rem;
+    cursor: pointer;
+    transition: background var(--transition-fast);
+    position: relative;
+}
+
+.notif-item:hover {
+    background: var(--bg-tertiary);
+}
+
+.notif-item.unread::before {
+    content: '';
+    position: absolute;
+    left: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--primary);
+}
+
+.notif-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.notif-icon.upcoming  { background: rgba(59,130,246,0.12); color: #3b82f6; }
+.notif-icon.overdue   { background: rgba(239,68,68,0.12);  color: #ef4444; }
+.notif-icon.missed    { background: rgba(245,158,11,0.12); color: #f59e0b; }
+.notif-icon.due-today { background: rgba(245,158,11,0.12); color: #f59e0b; }
+.notif-icon.done      { background: rgba(16,185,129,0.12); color: #10b981; }
+
+.notif-text h5 {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.1rem;
+}
+
+.notif-text p {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+}
+
+.notif-time {
+    font-size: 0.6875rem;
+    color: var(--text-tertiary);
+    white-space: nowrap;
+    margin-left: auto;
+    padding-left: var(--spacing-xs);
+    flex-shrink: 0;
+}
+
+/* Mobile: full-width panel */
+@media (max-width: 480px) {
+    .notif-panel {
+        width: calc(100vw - 2rem);
+        right: 1rem;
+        left: 1rem;
+    }
+}
+
+/* ===================================
+   ATTENDANCE TOAST
+   =================================== */
+.attendance-toast {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--bg-card);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-xl);
+    padding: var(--spacing-lg);
+    z-index: 1100;
+    width: min(380px, calc(100vw - 2rem));
+    opacity: 0;
+    pointer-events: none;
+    transition: all var(--transition-bounce);
+}
+
+.attendance-toast.active {
+    opacity: 1;
+    pointer-events: all;
+    transform: translateX(-50%) translateY(0);
+}
+
+.attendance-toast-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+}
+
+.attendance-toast-header i {
+    font-size: 1.25rem;
+    color: var(--primary);
+}
+
+.attendance-toast-header h4 {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.attendance-toast p {
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-md);
+    line-height: 1.5;
+}
+
+.attendance-toast-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+.attendance-toast-actions .btn {
+    flex: 1;
+    justify-content: center;
+    font-size: 0.8125rem;
+    padding: 0.5rem var(--spacing-sm);
+}
+
+/* ===================================
+   CLASS STATUS BADGES (Today's Overview)
+   =================================== */
+.today-schedule-item.class-done-attended {
+    border-left: 3px solid #10b981;
+    background: rgba(16,185,129,0.05);
+    opacity: 0.85;
+}
+
+.today-schedule-item.class-done-missed {
+    border-left: 3px solid #ef4444;
+    background: rgba(239,68,68,0.05);
+    opacity: 0.85;
+}
+
+.class-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 999px;
+    margin-top: 0.25rem;
+}
+
+.class-status-badge.attended {
+    background: rgba(16,185,129,0.15);
+    color: #059669;
+}
+
+.class-status-badge.missed {
+    background: rgba(239,68,68,0.15);
+    color: #dc2626;
+}
+
+.class-status-badge.upcoming-soon {
+    background: rgba(124,58,237,0.12);
+    color: var(--primary);
+    animation: pulse 1.5s ease infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.5; }
+}
+
+/* ===================================
+   FLOATING ACTION BUTTON (FAB)
+   =================================== */
+.fab-btn {
+    position: fixed;
+    bottom: 2rem;
+    right: 1.5rem;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(124, 58, 237, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 900;
+    transition: all var(--transition-bounce);
+}
+
+.fab-btn:hover {
+    transform: scale(1.1) rotate(90deg);
+    box-shadow: 0 8px 28px rgba(124, 58, 237, 0.55);
+}
+
+.fab-btn:active {
+    transform: scale(0.95);
+}
+
+/* ===================================
+   PORTRAIT LOCK
+   =================================== */
+@media (orientation: landscape) and (max-width: 900px) {
+    body::before {
+        content: 'Please rotate your device to portrait mode';
+        position: fixed;
+        inset: 0;
+        background: var(--primary);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        font-family: var(--font-display);
+        font-size: 1.125rem;
+        font-weight: 700;
+        z-index: 99999;
+        padding: 2rem;
+        line-height: 1.5;
+    }
 }
 
 /* ===================================
