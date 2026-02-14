@@ -47,20 +47,20 @@
 }
 
 body.dark-theme {
-    --bg-primary: #0d0b14;
-    --bg-secondary: #13101f;
-    --bg-tertiary: #1a1628;
-    --bg-card: #13101f;
-    --text-primary: #f0eeff;
-    --text-secondary: #b8b0d8;
-    --text-tertiary: #6b6387;
-    --border: #2a2340;
-    --border-strong: #3d3560;
-    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
-    --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
-    --shadow-lg: 0 12px 32px rgba(0,0,0,0.5);
-    --shadow-xl: 0 24px 48px rgba(0,0,0,0.6);
-    --primary-glow: rgba(124, 58, 237, 0.25);
+    --bg-primary: #1c1830;
+    --bg-secondary: #242038;
+    --bg-tertiary: #2e2a45;
+    --bg-card: #242038;
+    --text-primary: #ede9ff;
+    --text-secondary: #c4bed8;
+    --text-tertiary: #8b85a8;
+    --border: #3a3555;
+    --border-strong: #4e4870;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.2);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.25);
+    --shadow-lg: 0 12px 32px rgba(0,0,0,0.3);
+    --shadow-xl: 0 24px 48px rgba(0,0,0,0.4);
+    --primary-glow: rgba(124, 58, 237, 0.2);
 }
 
 * {
@@ -1368,21 +1368,21 @@ h1, h2, h3, h4, h5, h6 {
 
 .profile-quick-view {
     display: flex;
-    align-items: center;
-    gap: var(--spacing-xl);
-    padding: var(--spacing-md) 0;
+    align-items: flex-start;
+    gap: var(--spacing-lg);
+    padding: var(--spacing-sm) 0;
 }
 
 .profile-avatar {
-    width: 88px;
-    height: 88px;
+    width: 80px;
+    height: 80px;
     border-radius: 50%;
     background: linear-gradient(135deg, var(--primary-glow), var(--bg-tertiary));
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    border: 3px solid var(--primary-light);
+    border: 2px solid var(--primary-light);
     flex-shrink: 0;
     box-shadow: 0 0 0 4px var(--primary-glow);
 }
@@ -1394,32 +1394,53 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .profile-avatar i {
-    font-size: 3rem;
+    font-size: 2.5rem;
     color: var(--text-tertiary);
 }
 
 .profile-avatar .avatar-letter {
-    font-size: 2.25rem;
+    font-size: 2rem;
     font-weight: 800;
     color: var(--primary);
     font-family: var(--font-display);
     text-transform: uppercase;
 }
 
-.profile-info-admin h3 {
-    font-size: 1.25rem;
-    font-weight: 800;
-    margin-bottom: var(--spacing-xs);
-    color: var(--text-primary);
+.profile-info-admin {
+    flex: 1;
+    min-width: 0;
 }
 
-.profile-info-admin p {
-    color: var(--text-secondary);
+.profile-info-admin h3 {
+    font-size: 1.125rem;
+    font-weight: 800;
+    margin-bottom: var(--spacing-sm);
+    color: var(--text-primary);
+    line-height: 1.3;
+}
+
+.profile-info-admin .info-row {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.25rem var(--spacing-sm);
+    align-items: baseline;
+    margin-bottom: 0.35rem;
+}
+
+.profile-info-admin .info-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+
+.profile-info-admin .info-value {
     font-size: 0.875rem;
-    margin-bottom: 0.2rem;
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    word-break: break-word;
 }
 
 .form {
@@ -2259,9 +2280,8 @@ h1, h2, h3, h4, h5, h6 {
         padding: 0.625rem var(--spacing-xl);
         align-self: center;
     }
-    
-    /* Hide the header add button on mobile for projects empty state */
-    #projects-page .page-header .btn-primary {
+    /* Only hide header btn when grid is empty (class set by JS) */
+    #projects-page.projects-empty .page-header .btn-primary {
         display: none;
     }
 }
