@@ -476,21 +476,19 @@ const NavigationManager = {
     navigateTo(page) {
         const navLinks = document.querySelectorAll('.nav-link');
         navLinks.forEach(link => {
-            if (link.dataset.page === page) {
-                link.classList.add('active');
-            } else {
-                link.classList.remove('active');
-            }
+            if (link.dataset.page === page) link.classList.add('active');
+            else link.classList.remove('active');
         });
 
         const pages = document.querySelectorAll('.page');
         pages.forEach(p => {
-            if (p.id === `${page}-page`) {
-                p.classList.add('active');
-            } else {
-                p.classList.remove('active');
-            }
+            if (p.id === `${page}-page`) p.classList.add('active');
+            else p.classList.remove('active');
         });
+
+        // Show FAB only on Projects page
+        const fab = document.getElementById('fabAddProject');
+        if (fab) fab.style.display = page === 'projects' ? 'flex' : 'none';
     }
 };
 
@@ -1544,18 +1542,189 @@ const AchievementManager = {
 // ===================================
 // TODAY'S OVERVIEW MANAGER
 // ===================================
-const TodayManager = {
-    notificationInterval: null,
-    lastNotifiedClass: null,
+// ===================================
+// NOTIFICATION MANAGER
+// ===================================
+const NotificationManager = {
+    STORAGE_KEY: 'hubNotifications',
+    notifications: [],
 
     init() {
+        this.load();
+        this.pruneOld();
+        this.renderPanel();
+        this.updateBadge();
+
+        document.getElementById('notifBellBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.togglePanel();
+        });
+        document.getElementById('notifPanelOverlay').addEventListener('click', () => this.closePanel());
+        document.getElementById('notifClearAll').addEventListener('click', () => this.clearAll());
+    },
+
+    load() {
+        this.notifications = StorageManager.get(this.STORAGE_KEY) || [];
+    },
+
+    save() {
+        StorageManager.set(this.STORAGE_KEY, this.notifications);
+    },
+
+    pruneOld() {
+        const cutoff = Date.now() - 24 * 60 * 60 * 1000; // 24 hours
+        this.notifications = this.notifications.filter(n => n.timestamp > cutoff);
+        this.save();
+    },
+
+    add(type, title, body, key = null) {
+        // Prevent duplicates by key
+        if (key && this.notifications.find(n => n.key === key)) return;
+
+        const notif = {
+            id: Date.now() + Math.random(),
+            key: key || `${type}-${Date.now()}`,
+            type,   // 'upcoming' | 'overdue' | 'missed' | 'due-today' | 'done'
+            title,
+            body,
+            timestamp: Date.now(),
+            unread: true
+        };
+
+        this.notifications.unshift(notif);
+        this.save();
+        this.renderPanel();
+        this.updateBadge();
+        return notif;
+    },
+
+    markRead(id) {
+        const n = this.notifications.find(n => n.id === id);
+        if (n) { n.unread = false; this.save(); this.updateBadge(); }
+    },
+
+    clearAll() {
+        this.notifications = [];
+        this.save();
+        this.renderPanel();
+        this.updateBadge();
+    },
+
+    updateBadge() {
+        const badge = document.getElementById('notifBadge');
+        const btn   = document.getElementById('notifBellBtn');
+        const unread = this.notifications.filter(n => n.unread).length;
+
+        if (unread > 0) {
+            badge.textContent = unread > 9 ? '9+' : unread;
+            badge.style.display = 'flex';
+            btn.classList.add('has-notifs');
+        } else {
+            badge.style.display = 'none';
+            btn.classList.remove('has-notifs');
+        }
+    },
+
+    togglePanel() {
+        const panel   = document.getElementById('notifPanel');
+        const overlay = document.getElementById('notifPanelOverlay');
+        const isOpen  = panel.classList.contains('active');
+        if (isOpen) {
+            this.closePanel();
+        } else {
+            panel.classList.add('active');
+            overlay.classList.add('active');
+            // Mark all as read when opened
+            this.notifications.forEach(n => n.unread = false);
+            this.save();
+            this.updateBadge();
+        }
+    },
+
+    closePanel() {
+        document.getElementById('notifPanel').classList.remove('active');
+        document.getElementById('notifPanelOverlay').classList.remove('active');
+    },
+
+    renderPanel() {
+        const body = document.getElementById('notifPanelBody');
+        if (this.notifications.length === 0) {
+            body.innerHTML = `
+                <div class="notif-empty">
+                    <i class="bi bi-bell-slash"></i>
+                    <p>No notifications yet</p>
+                </div>`;
+            return;
+        }
+
+        const iconMap = {
+            upcoming:  'bi-clock-fill',
+            'due-today': 'bi-alarm-fill',
+            overdue:   'bi-exclamation-triangle-fill',
+            missed:    'bi-x-circle-fill',
+            done:      'bi-check-circle-fill'
+        };
+
+        body.innerHTML = this.notifications.map(n => `
+            <div class="notif-item ${n.unread ? 'unread' : ''}" data-id="${n.id}">
+                <div class="notif-icon ${n.type}">
+                    <i class="bi ${iconMap[n.type] || 'bi-bell'}"></i>
+                </div>
+                <div class="notif-text">
+                    <h5>${n.title}</h5>
+                    <p>${n.body}</p>
+                </div>
+                <span class="notif-time">${this.timeAgo(n.timestamp)}</span>
+            </div>
+        `).join('');
+
+        body.querySelectorAll('.notif-item').forEach(el => {
+            el.addEventListener('click', () => this.markRead(parseFloat(el.dataset.id)));
+        });
+    },
+
+    timeAgo(ts) {
+        const diff = Math.floor((Date.now() - ts) / 60000);
+        if (diff < 1)  return 'just now';
+        if (diff < 60) return `${diff}m ago`;
+        const h = Math.floor(diff / 60);
+        return h < 24 ? `${h}h ago` : `${Math.floor(h/24)}d ago`;
+    }
+};
+
+// ===================================
+// TODAY MANAGER (with attendance)
+// ===================================
+const TodayManager = {
+    notificationInterval: null,
+    attendanceState: {},       // { courseKey: 'attended' | 'missed' | 'pending' }
+    notifiedKeys: new Set(),   // prevent duplicate toasts per session
+    activeToast: null,
+
+    init() {
+        this.loadAttendance();
         this.render();
         this.startNotificationCheck();
-        
-        // Update every minute
-        setInterval(() => {
-            this.render();
-        }, 60000);
+        setInterval(() => this.render(), 60000);
+    },
+
+    loadAttendance() {
+        const today = new Date().toDateString();
+        const saved = StorageManager.get('attendanceState');
+        // Reset attendance every new day
+        if (saved && saved.date === today) {
+            this.attendanceState = saved.state || {};
+        } else {
+            this.attendanceState = {};
+            this.saveAttendance();
+        }
+    },
+
+    saveAttendance() {
+        StorageManager.set('attendanceState', {
+            date: new Date().toDateString(),
+            state: this.attendanceState
+        });
     },
 
     render() {
@@ -1572,241 +1741,325 @@ const TodayManager = {
 
     renderTodaySchedule() {
         const container = document.getElementById('todaySchedule');
-        const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-        const now = new Date();
+        const today     = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+        const now       = new Date();
         const currentTime = now.getHours() * 60 + now.getMinutes();
-        
-        // Filter schedules for today
+
         const todaySchedules = [];
-        
+
         AppState.schedules.forEach(schedule => {
-            const schedDays = schedule.day.split(',').map(d => d.trim());
+            const schedDays  = schedule.day.split(',').map(d => d.trim());
             const schedTimes = schedule.time.split('/').map(t => t.trim());
-            
+
             schedDays.forEach((day, index) => {
                 if (day === today) {
                     const timeForDay = schedTimes[index] || schedTimes[0];
                     const formattedTime = ScheduleManager.formatTimeWithAMPM(timeForDay);
-                    
-                    // Parse start time for sorting
                     const startTime = this.parseTime(timeForDay);
-                    
+                    const endTime   = this.parseEndTime(timeForDay);
+                    const courseKey = `${schedule.course}-${timeForDay}`;
+
                     todaySchedules.push({
                         course: schedule.course,
                         time: formattedTime,
                         room: schedule.room,
-                        startTime: startTime,
-                        rawTime: timeForDay
+                        startTime,
+                        endTime,
+                        rawTime: timeForDay,
+                        courseKey
                     });
                 }
             });
         });
-        
+
         if (todaySchedules.length === 0) {
             container.innerHTML = `
                 <div class="empty-state-small">
                     <i class="bi bi-calendar-x"></i>
                     <p>No classes today</p>
-                </div>
-            `;
+                </div>`;
             return;
         }
-        
-        // Sort by start time
+
         todaySchedules.sort((a, b) => a.startTime - b.startTime);
-        
-        container.innerHTML = todaySchedules.map(schedule => {
-            const {isNow, isUpcoming} = this.checkClassStatus(schedule.rawTime, currentTime);
-            
-            let statusClass = '';
-            if (isNow) statusClass = 'happening-now';
-            else if (isUpcoming) statusClass = 'upcoming';
-            
+
+        container.innerHTML = todaySchedules.map(s => {
+            const { isNow, isUpcoming, isDone } = this.checkClassStatus(s.rawTime, currentTime);
+            const attendance = this.attendanceState[s.courseKey];
+
+            let itemClass = '';
+            let statusBadge = '';
+
+            if (attendance === 'attended') {
+                itemClass   = 'class-done-attended';
+                statusBadge = `<span class="class-status-badge attended"><i class="bi bi-check2"></i> Class done!</span>`;
+            } else if (attendance === 'missed') {
+                itemClass   = 'class-done-missed';
+                statusBadge = `<span class="class-status-badge missed"><i class="bi bi-x-lg"></i> Missed class</span>`;
+            } else if (isDone) {
+                // Time passed, no response → auto-missed
+                this.attendanceState[s.courseKey] = 'missed';
+                this.saveAttendance();
+                NotificationManager.add('missed', 'Missed Class', `Looks like you missed ${s.course}.`, `missed-${s.courseKey}`);
+                itemClass   = 'class-done-missed';
+                statusBadge = `<span class="class-status-badge missed"><i class="bi bi-x-lg"></i> Missed class</span>`;
+            } else if (isNow) {
+                itemClass = 'happening-now';
+                statusBadge = `<span class="class-status-badge upcoming-soon"><i class="bi bi-circle-fill"></i> In progress</span>`;
+            } else if (isUpcoming) {
+                itemClass = 'upcoming';
+                statusBadge = `<span class="class-status-badge upcoming-soon"><i class="bi bi-clock"></i> Starting soon</span>`;
+            }
+
             return `
-                <div class="today-schedule-item ${statusClass}">
-                    <h4>${schedule.course}</h4>
+                <div class="today-schedule-item ${itemClass}">
+                    <h4>${s.course}</h4>
                     <div class="today-schedule-time">
-                        <i class="bi bi-clock"></i>
-                        <span>${schedule.time}</span>
+                        <i class="bi bi-clock"></i> <span>${s.time}</span>
                     </div>
                     <div class="today-schedule-room">
-                        <i class="bi bi-geo-alt"></i> ${schedule.room}
+                        <i class="bi bi-geo-alt"></i> ${s.room}
                     </div>
-                </div>
-            `;
+                    ${statusBadge}
+                </div>`;
         }).join('');
     },
 
     renderDueTasks() {
         const container = document.getElementById('todayTasks');
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        const threeDaysFromNow = new Date(today);
-        threeDaysFromNow.setDate(today.getDate() + 3);
-        
-        // Filter tasks due within 3 days and not completed
-        const dueSoonTasks = AppState.tasks.filter(task => {
-            if (task.completed) return false;
-            
-            const dueDate = new Date(task.dueDate + 'T00:00:00');
-            return dueDate <= threeDaysFromNow;
-        }).sort((a, b) => {
-            return new Date(a.dueDate) - new Date(b.dueDate);
-        });
-        
-        if (dueSoonTasks.length === 0) {
+        const today     = new Date(); today.setHours(0,0,0,0);
+        const in3Days   = new Date(today); in3Days.setDate(today.getDate() + 3);
+
+        const dueSoon = AppState.tasks.filter(t => {
+            if (t.completed) return false;
+            const d = new Date(t.dueDate + 'T00:00:00');
+            return d <= in3Days;
+        }).sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+
+        if (dueSoon.length === 0) {
             container.innerHTML = `
                 <div class="empty-state-small">
                     <i class="bi bi-check-circle"></i>
                     <p>No tasks due soon</p>
-                </div>
-            `;
+                </div>`;
             return;
         }
-        
-        container.innerHTML = dueSoonTasks.slice(0, 5).map(task => {
-            const dueDate = new Date(task.dueDate + 'T00:00:00');
-            const isOverdue = dueDate < today;
-            const isDueToday = dueDate.getTime() === today.getTime();
-            
-            let statusClass = '';
-            let iconClass = 'bi-clock';
-            let dueText = 'Due ' + task.dueDate;
-            
-            if (isOverdue) {
-                statusClass = 'overdue';
-                iconClass = 'bi-exclamation-triangle-fill';
-                dueText = 'Overdue!';
-            } else if (isDueToday) {
-                statusClass = 'due-today';
-                iconClass = 'bi-alarm';
-                dueText = 'Due Today';
-            }
-            
+
+        container.innerHTML = dueSoon.slice(0,5).map(task => {
+            const due       = new Date(task.dueDate + 'T00:00:00');
+            const isOverdue = due < today;
+            const isToday   = due.getTime() === today.getTime();
+            let statusClass = '', icon = 'bi-clock', dueText = 'Due ' + task.dueDate;
+
+            if (isOverdue)    { statusClass = 'overdue';   icon = 'bi-exclamation-triangle-fill'; dueText = 'Overdue!'; }
+            else if (isToday) { statusClass = 'due-today'; icon = 'bi-alarm';                     dueText = 'Due Today'; }
+
             return `
                 <div class="today-task-item ${statusClass}">
-                    <i class="bi ${iconClass} today-task-icon ${statusClass}"></i>
+                    <i class="bi ${icon} today-task-icon ${statusClass}"></i>
                     <div class="today-task-info">
                         <h5>${task.title}</h5>
                         <p>${task.course}</p>
                     </div>
                     <span class="today-task-due ${statusClass}">${dueText}</span>
-                </div>
-            `;
+                </div>`;
         }).join('');
     },
 
     parseTime(timeString) {
-        // Parse time string like "9:00 - 10:30" or "9:00" to minutes from midnight
-        const startTimeStr = timeString.split('-')[0].trim();
-        const match = startTimeStr.match(/(\d+):(\d+)/);
-        
-        if (!match) return 0;
-        
-        let hours = parseInt(match[1]);
-        const minutes = parseInt(match[2]);
-        
-        // Handle AM/PM if present
-        if (timeString.toUpperCase().includes('PM') && hours !== 12) {
-            hours += 12;
-        } else if (timeString.toUpperCase().includes('AM') && hours === 12) {
-            hours = 0;
-        }
-        
-        return hours * 60 + minutes;
+        const s = timeString.split('-')[0].trim();
+        const m = s.match(/(\d+):(\d+)\s*(AM|PM)?/i);
+        if (!m) return 0;
+        let h = parseInt(m[1]), min = parseInt(m[2]);
+        const period = m[3] ? m[3].toUpperCase() : null;
+        if (period === 'PM' && h !== 12) h += 12;
+        if (period === 'AM' && h === 12) h = 0;
+        return h * 60 + min;
+    },
+
+    parseEndTime(timeString) {
+        const parts = timeString.split('-');
+        if (parts.length < 2) return this.parseTime(timeString) + 60;
+        return this.parseTime(parts[1].trim() + (timeString.toUpperCase().includes('PM') ? ' PM' : ''));
     },
 
     checkClassStatus(timeString, currentTime) {
         const times = timeString.split('-').map(t => t.trim());
-        if (times.length !== 2) return { isNow: false, isUpcoming: false };
-        
+        if (times.length !== 2) return { isNow: false, isUpcoming: false, isDone: false };
+
         const startTime = this.parseTime(times[0]);
-        const endTime = this.parseTime(times[1]);
-        
-        const isNow = currentTime >= startTime && currentTime <= endTime;
-        const isUpcoming = currentTime < startTime && (startTime - currentTime) <= 30; // Within 30 min
-        
-        return { isNow, isUpcoming };
+        const endTime   = this.parseTime(times[1]);
+
+        return {
+            isNow:     currentTime >= startTime && currentTime < endTime,
+            isUpcoming: currentTime < startTime && (startTime - currentTime) <= 30,
+            isDone:    currentTime > endTime
+        };
     },
 
     startNotificationCheck() {
-        // Request notification permission
-        if ('Notification' in window && Notification.permission === 'default') {
-            Notification.requestPermission();
-        }
-        
-        // Check every minute for upcoming classes
-        this.notificationInterval = setInterval(() => {
-            this.checkUpcomingClasses();
-        }, 60000); // Every minute
-        
-        // Check immediately
+        this.notificationInterval = setInterval(() => this.checkAll(), 60000);
+        this.checkAll();
+    },
+
+    checkAll() {
         this.checkUpcomingClasses();
+        this.checkOverdueTasks();
     },
 
     checkUpcomingClasses() {
-        if (!('Notification' in window) || Notification.permission !== 'granted') {
-            return;
-        }
-        
-        const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-        const now = new Date();
-        const currentTime = now.getHours() * 60 + now.getMinutes();
-        
+        const today   = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+        const now     = new Date();
+        const current = now.getHours() * 60 + now.getMinutes();
+
         AppState.schedules.forEach(schedule => {
-            const schedDays = schedule.day.split(',').map(d => d.trim());
-            const schedTimes = schedule.time.split('/').map(t => t.trim());
-            
-            schedDays.forEach((day, index) => {
-                if (day === today) {
-                    const timeForDay = schedTimes[index] || schedTimes[0];
-                    const startTime = this.parseTime(timeForDay);
-                    const minutesUntil = startTime - currentTime;
-                    
-                    // Notify 10 minutes before class
-                    if (minutesUntil === 10) {
-                        const notificationKey = `${schedule.course}-${timeForDay}`;
-                        
-                        // Prevent duplicate notifications
-                        if (this.lastNotifiedClass !== notificationKey) {
-                            this.lastNotifiedClass = notificationKey;
-                            
-                            const formattedTime = ScheduleManager.formatTimeWithAMPM(timeForDay);
-                            
-                            new Notification('Class Starting Soon! 🎓', {
-                                body: `${schedule.course} starts in 10 minutes at ${formattedTime}
-Room: ${schedule.room}`,
-                                icon: '/student-hub/icons/icon-192x192.png',
-                                badge: '/student-hub/icons/icon-72x72.png',
-                                tag: notificationKey,
-                                requireInteraction: false
-                            });
-                            
-                            // Also show in-app notification
-                            UIManager.notify(`Class starting soon: ${schedule.course} at ${formattedTime}`, 'info');
-                        }
-                    }
-                    
-                    // Notify when class is starting (within 2 minutes)
-                    if (minutesUntil >= 0 && minutesUntil <= 2) {
-                        const notificationKey = `${schedule.course}-starting-${timeForDay}`;
-                        
-                        if (this.lastNotifiedClass !== notificationKey) {
-                            this.lastNotifiedClass = notificationKey;
-                            
-                            UIManager.notify(`${schedule.course} is starting now! 🎓`, 'warning');
-                        }
-                    }
+            const days  = schedule.day.split(',').map(d => d.trim());
+            const times = schedule.time.split('/').map(t => t.trim());
+
+            days.forEach((day, i) => {
+                if (day !== today) return;
+                const timeForDay  = times[i] || times[0];
+                const startTime   = this.parseTime(timeForDay);
+                const minutesLeft = startTime - current;
+                const courseKey   = `${schedule.course}-${timeForDay}`;
+                const toastKey    = `toast-${courseKey}`;
+                const attended    = this.attendanceState[courseKey];
+
+                if (attended) return; // Already responded
+
+                // 10-minute warning → show attendance toast
+                if (minutesLeft >= 9 && minutesLeft <= 11 && !this.notifiedKeys.has(toastKey)) {
+                    this.notifiedKeys.add(toastKey);
+                    const formatted = ScheduleManager.formatTimeWithAMPM(timeForDay);
+
+                    NotificationManager.add(
+                        'upcoming',
+                        'Class in 10 minutes!',
+                        `${schedule.course} starts at ${formatted} — Room ${schedule.room}`,
+                        `upcoming-${courseKey}`
+                    );
+
+                    this.showAttendanceToast(
+                        `🎓 ${schedule.course} starts in 10 minutes!`,
+                        `Room: ${schedule.room} at ${formatted}\nAre you heading to class?`,
+                        'class',
+                        courseKey,
+                        schedule.course
+                    );
                 }
             });
         });
     },
 
-    destroy() {
-        if (this.notificationInterval) {
-            clearInterval(this.notificationInterval);
+    checkOverdueTasks() {
+        const today = new Date(); today.setHours(0,0,0,0);
+
+        AppState.tasks.forEach((task, index) => {
+            if (task.completed) return;
+            const due     = new Date(task.dueDate + 'T00:00:00');
+            const isToday = due.getTime() === today.getTime();
+            const isOver  = due < today;
+            const taskKey = `task-${task.title}-${task.dueDate}`;
+
+            if ((isToday || isOver) && !this.notifiedKeys.has(taskKey)) {
+                this.notifiedKeys.add(taskKey);
+                const type  = isOver ? 'overdue' : 'due-today';
+                const label = isOver ? 'Task Overdue!' : 'Task Due Today!';
+
+                NotificationManager.add(type, label, `"${task.title}" for ${task.course}`, taskKey);
+
+                this.showTaskToast(task, index, isOver);
+            }
+        });
+    },
+
+    showAttendanceToast(title, body, type, courseKey, courseName) {
+        this.dismissActiveToast();
+        const toast = document.getElementById('attendanceToast');
+        document.getElementById('toastTitle').textContent = title;
+        document.getElementById('toastBody').textContent  = body;
+
+        const yesBtn = document.getElementById('toastYesBtn');
+        const noBtn  = document.getElementById('toastNoBtn');
+
+        yesBtn.textContent = '✅ Yes, I\'m in class!';
+        noBtn.textContent  = 'Not going';
+
+        // Remove old listeners
+        const newYes = yesBtn.cloneNode(true);
+        const newNo  = noBtn.cloneNode(true);
+        yesBtn.parentNode.replaceChild(newYes, yesBtn);
+        noBtn.parentNode.replaceChild(newNo, noBtn);
+
+        newYes.addEventListener('click', () => {
+            this.attendanceState[courseKey] = 'attended';
+            this.saveAttendance();
+            NotificationManager.add('done', 'Marked as Attended', `${courseName} — nice!`, `att-done-${courseKey}`);
+            this.dismissActiveToast();
+            this.renderTodaySchedule();
+        });
+
+        newNo.addEventListener('click', () => {
+            this.attendanceState[courseKey] = 'missed';
+            this.saveAttendance();
+            NotificationManager.add('missed', 'Marked as Missed', `${courseName}`, `att-miss-${courseKey}`);
+            this.dismissActiveToast();
+            this.renderTodaySchedule();
+        });
+
+        toast.classList.add('active');
+        this.activeToast = toast;
+
+        // Auto-dismiss after 60 seconds
+        setTimeout(() => { if (toast.classList.contains('active')) this.dismissActiveToast(); }, 60000);
+    },
+
+    showTaskToast(task, index, isOverdue) {
+        this.dismissActiveToast();
+        const toast = document.getElementById('attendanceToast');
+        const label = isOverdue ? '⚠️ Task Overdue!' : '⏰ Task Due Today!';
+
+        document.getElementById('toastTitle').textContent = label;
+        document.getElementById('toastBody').textContent  = `"${task.title}" for ${task.course}. Did you finish it?`;
+
+        const yesBtn = document.getElementById('toastYesBtn');
+        const noBtn  = document.getElementById('toastNoBtn');
+
+        yesBtn.textContent = '✅ Yes, I\'m done!';
+        noBtn.textContent  = 'Not yet';
+
+        const newYes = yesBtn.cloneNode(true);
+        const newNo  = noBtn.cloneNode(true);
+        yesBtn.parentNode.replaceChild(newYes, yesBtn);
+        noBtn.parentNode.replaceChild(newNo, noBtn);
+
+        newYes.addEventListener('click', () => {
+            AppState.tasks[index].completed = true;
+            AppState.save('tasks');
+            TaskManager.render();
+            this.renderDueTasks();
+            NotificationManager.add('done', 'Task Completed!', `"${task.title}" marked as done.`, `task-done-${task.title}`);
+            this.dismissActiveToast();
+        });
+
+        newNo.addEventListener('click', () => {
+            this.dismissActiveToast();
+        });
+
+        toast.classList.add('active');
+        this.activeToast = toast;
+        setTimeout(() => { if (toast.classList.contains('active')) this.dismissActiveToast(); }, 60000);
+    },
+
+    dismissActiveToast() {
+        if (this.activeToast) {
+            this.activeToast.classList.remove('active');
+            this.activeToast = null;
         }
+    },
+
+    destroy() {
+        if (this.notificationInterval) clearInterval(this.notificationInterval);
     }
 };
 
@@ -2068,7 +2321,8 @@ const FocusModeManager = {
 const ProjectManager = {
     init() {
         this.render();
-        document.getElementById('addProjectBtn').addEventListener('click', () => this.showAddForm());
+        // FAB button
+        document.getElementById('fabAddProject').addEventListener('click', () => this.showAddForm());
     },
 
     render() {
@@ -2082,9 +2336,9 @@ const ProjectManager = {
                     <i class="bi bi-folder-x"></i>
                     <h3>No projects yet</h3>
                     <p>Start building and showcase your programming portfolio!</p>
-                    <button class="btn btn-primary btn-mobile-add" onclick="document.getElementById('addProjectBtn').click()">
-                        <i class="bi bi-plus-lg"></i> Add Project
-                    </button>
+                    <p style="font-size:0.8125rem; color:var(--text-tertiary); margin-top:0.5rem;">
+                        Tap the <strong>+</strong> button below to add your first project!
+                    </p>
                 </div>
             `;
             return;
@@ -2291,6 +2545,7 @@ document.addEventListener('DOMContentLoaded', () => {
             NavigationManager.init();
             ThemeManager.init();
             ProfileManager.init();
+            NotificationManager.init();
             CourseManager.init();
             ScheduleManager.init();
             TaskManager.init();
@@ -2308,6 +2563,13 @@ document.addEventListener('DOMContentLoaded', () => {
         alert('Error loading app. Please check console for details.');
     }
     
+    // Portrait Lock
+    if (screen.orientation && screen.orientation.lock) {
+        screen.orientation.lock('portrait').catch(() => {
+            // Silently fail — some browsers don't support it
+        });
+    }
+
     // Register Service Worker for PWA
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/student-hubv2/service-worker.js')
