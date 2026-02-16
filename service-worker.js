@@ -1,7 +1,7 @@
-// Student Hub - Service Worker v1.1.3
-// Major: Notification bell, attendance tracking, FAB, portrait lock
+// Student Hub - Service Worker v1.1.5
+// Fix: Missed class timing, sort order, long-press menu, cancelled class
 
-const CACHE_NAME = 'student-hub-v14';
+const CACHE_NAME = 'student-hub-v16';
 const BASE_PATH = '/student-hubv2';
 
 // Files to cache
