@@ -1697,33 +1697,42 @@ const NotificationManager = {
 // ===================================
 const TodayManager = {
     notificationInterval: null,
-    attendanceState: {},       // { courseKey: 'attended' | 'missed' | 'pending' }
-    notifiedKeys: new Set(),   // prevent duplicate toasts per session
+    attendanceState: {},    // { courseKey: 'attended'|'missed'|'pending'|'cancelled' }
+    toastSnoozed: {},       // { courseKey: timestamp } — "Not yet" snooze tracking
+    toastAnswered: {},      // { courseKey: true } — fully answered, never show again
     activeToast: null,
+    cancelState: {},        // { courseKey: true } — cancelled for today
 
     init() {
         this.loadAttendance();
         this.render();
         this.startNotificationCheck();
+        // Re-render every minute
         setInterval(() => this.render(), 60000);
     },
 
     loadAttendance() {
         const today = new Date().toDateString();
         const saved = StorageManager.get('attendanceState');
-        // Reset attendance every new day
         if (saved && saved.date === today) {
-            this.attendanceState = saved.state || {};
+            this.attendanceState = saved.state       || {};
+            this.toastAnswered   = saved.answered    || {};
+            this.cancelState     = saved.cancelState || {};
         } else {
+            // New day — reset everything
             this.attendanceState = {};
+            this.toastAnswered   = {};
+            this.cancelState     = {};
             this.saveAttendance();
         }
     },
 
     saveAttendance() {
         StorageManager.set('attendanceState', {
-            date: new Date().toDateString(),
-            state: this.attendanceState
+            date:        new Date().toDateString(),
+            state:       this.attendanceState,
+            answered:    this.toastAnswered,
+            cancelState: this.cancelState
         });
     },
 
@@ -1734,41 +1743,35 @@ const TodayManager = {
     },
 
     renderDate() {
-        const today = new Date();
+        const today   = new Date();
         const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
         document.getElementById('todayDate').textContent = today.toLocaleDateString('en-US', options);
     },
 
     renderTodaySchedule() {
-        const container = document.getElementById('todaySchedule');
-        const today     = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-        const now       = new Date();
-        const currentTime = now.getHours() * 60 + now.getMinutes();
+        const container   = document.getElementById('todaySchedule');
+        const todayName   = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+        const currentTime = new Date().getHours() * 60 + new Date().getMinutes();
 
         const todaySchedules = [];
 
         AppState.schedules.forEach(schedule => {
-            const schedDays  = schedule.day.split(',').map(d => d.trim());
-            const schedTimes = schedule.time.split('/').map(t => t.trim());
+            const days  = schedule.day.split(',').map(d => d.trim());
+            const times = schedule.time.split('/').map(t => t.trim());
 
-            schedDays.forEach((day, index) => {
-                if (day === today) {
-                    const timeForDay = schedTimes[index] || schedTimes[0];
-                    const formattedTime = ScheduleManager.formatTimeWithAMPM(timeForDay);
-                    const startTime = this.parseTime(timeForDay);
-                    const endTime   = this.parseEndTime(timeForDay);
-                    const courseKey = `${schedule.course}-${timeForDay}`;
-
-                    todaySchedules.push({
-                        course: schedule.course,
-                        time: formattedTime,
-                        room: schedule.room,
-                        startTime,
-                        endTime,
-                        rawTime: timeForDay,
-                        courseKey
-                    });
-                }
+            days.forEach((day, idx) => {
+                if (day !== todayName) return;
+                const rawTime   = times[idx] || times[0];
+                const courseKey = `${schedule.course}-${rawTime}`;
+                todaySchedules.push({
+                    course:    schedule.course,
+                    time:      ScheduleManager.formatTimeWithAMPM(rawTime),
+                    room:      schedule.room,
+                    startTime: this.parseTime(rawTime),
+                    endTime:   this.parseEndTime(rawTime),
+                    rawTime,
+                    courseKey
+                });
             });
         });
 
@@ -1783,36 +1786,76 @@ const TodayManager = {
 
         todaySchedules.sort((a, b) => a.startTime - b.startTime);
 
-        container.innerHTML = todaySchedules.map(s => {
-            const { isNow, isUpcoming, isDone } = this.checkClassStatus(s.rawTime, currentTime);
-            const attendance = this.attendanceState[s.courseKey];
+        // ── Categorise into 4 buckets ─────────────────────────────────────
+        const ongoing   = [];
+        const done      = [];
+        const missed    = [];
+        const cancelled = [];
 
-            let itemClass = '';
+        todaySchedules.forEach(s => {
+            const attendance  = this.attendanceState[s.courseKey];
+            const isCancelled = this.cancelState[s.courseKey];
+            const { isNow, isUpcoming, isDone } = this.checkClassStatus(s.rawTime, currentTime);
+
+            if (isCancelled) {
+                cancelled.push({ ...s, attendance, isCancelled });
+                return;
+            }
+
+            if (isDone) {
+                if (!this.toastAnswered[s.courseKey]) {
+                    this.attendanceState[s.courseKey] = 'missed';
+                    this.toastAnswered[s.courseKey]   = true;
+                    this.saveAttendance();
+                    NotificationManager.add('missed', 'Missed Class',
+                        `Looks like you missed ${s.course}.`, `missed-${s.courseKey}`);
+                }
+                const final = this.attendanceState[s.courseKey];
+                if (final === 'attended') {
+                    done.push({ ...s, attendance: final });
+                } else {
+                    missed.push({ ...s, attendance: final });
+                }
+                return;
+            }
+
+            // Still active (ongoing / upcoming)
+            ongoing.push({ ...s, attendance, isNow, isUpcoming });
+        });
+
+        // ── Build card HTML ──────────────────────────────────────────────
+        const buildCard = (s, type) => {
+            let itemClass   = '';
             let statusBadge = '';
 
-            if (attendance === 'attended') {
+            if (type === 'ongoing') {
+                if (s.isNow && s.attendance === 'attended') {
+                    itemClass   = 'class-attending';
+                    statusBadge = `<span class="class-status-badge attending"><i class="bi bi-check-circle-fill"></i> Attending ✔️</span>`;
+                } else if (s.isNow) {
+                    itemClass   = 'happening-now';
+                    statusBadge = `<span class="class-status-badge upcoming-soon"><i class="bi bi-circle-fill"></i> In progress</span>`;
+                } else {
+                    itemClass   = 'upcoming';
+                    statusBadge = `<span class="class-status-badge upcoming-soon"><i class="bi bi-clock"></i> Starting soon</span>`;
+                }
+            } else if (type === 'done') {
                 itemClass   = 'class-done-attended';
-                statusBadge = `<span class="class-status-badge attended"><i class="bi bi-check2"></i> Class done!</span>`;
-            } else if (attendance === 'missed') {
+                statusBadge = `<span class="class-status-badge attended"><i class="bi bi-check2-circle"></i> Class done!</span>`;
+            } else if (type === 'missed') {
                 itemClass   = 'class-done-missed';
                 statusBadge = `<span class="class-status-badge missed"><i class="bi bi-x-lg"></i> Missed class</span>`;
-            } else if (isDone) {
-                // Time passed, no response → auto-missed
-                this.attendanceState[s.courseKey] = 'missed';
-                this.saveAttendance();
-                NotificationManager.add('missed', 'Missed Class', `Looks like you missed ${s.course}.`, `missed-${s.courseKey}`);
-                itemClass   = 'class-done-missed';
-                statusBadge = `<span class="class-status-badge missed"><i class="bi bi-x-lg"></i> Missed class</span>`;
-            } else if (isNow) {
-                itemClass = 'happening-now';
-                statusBadge = `<span class="class-status-badge upcoming-soon"><i class="bi bi-circle-fill"></i> In progress</span>`;
-            } else if (isUpcoming) {
-                itemClass = 'upcoming';
-                statusBadge = `<span class="class-status-badge upcoming-soon"><i class="bi bi-clock"></i> Starting soon</span>`;
+            } else if (type === 'cancelled') {
+                itemClass   = 'class-done-cancelled';
+                statusBadge = `<span class="class-status-badge cancelled"><i class="bi bi-slash-circle"></i> Cancelled</span>`;
             }
 
             return `
-                <div class="today-schedule-item ${itemClass}">
+                <div class="today-schedule-item ${itemClass}"
+                     data-course-key="${s.courseKey}"
+                     data-course="${s.course}"
+                     data-attendance="${s.attendance || ''}"
+                     data-cancelled="${s.isCancelled || ''}">
                     <h4>${s.course}</h4>
                     <div class="today-schedule-time">
                         <i class="bi bi-clock"></i> <span>${s.time}</span>
@@ -1822,9 +1865,150 @@ const TodayManager = {
                     </div>
                     ${statusBadge}
                 </div>`;
-        }).join('');
+        };
+
+        const sectionHeader = (type, icon, label, count) => `
+            <div class="schedule-section-header ${type}-header">
+                <i class="bi ${icon}"></i>
+                <span>${label}</span>
+                <span class="section-count">${count}</span>
+            </div>`;
+
+        // ── Assemble HTML ────────────────────────────────────────────────
+        let html = '';
+
+        if (ongoing.length > 0) {
+            html += `<div class="schedule-section">${ongoing.map(s => buildCard(s, 'ongoing')).join('')}</div>`;
+        }
+
+        if (done.length > 0) {
+            html += sectionHeader('done', 'bi-check2-circle', 'Done', done.length);
+            html += `<div class="schedule-section">${done.map(s => buildCard(s, 'done')).join('')}</div>`;
+        }
+
+        if (missed.length > 0) {
+            html += sectionHeader('missed', 'bi-x-circle', 'Missed Classes', missed.length);
+            html += `<div class="schedule-section">${missed.map(s => buildCard(s, 'missed')).join('')}</div>`;
+        }
+
+        if (cancelled.length > 0) {
+            html += sectionHeader('cancelled', 'bi-slash-circle', 'Cancelled', cancelled.length);
+            html += `<div class="schedule-section">${cancelled.map(s => buildCard(s, 'cancelled')).join('')}</div>`;
+        }
+
+        if (!html) {
+            html = `<div class="empty-state-small"><i class="bi bi-calendar-check"></i><p>No classes today</p></div>`;
+        }
+
+        container.innerHTML = html;
+        container.querySelectorAll('.today-schedule-item').forEach(el => this.attachLongPress(el));
     },
 
+    // ─── LONG PRESS CONTEXT MENU ────────────────────────────────────────────
+    attachLongPress(el) {
+        let pressTimer = null;
+
+        const start = () => {
+            pressTimer = setTimeout(() => this.showContextMenu(el), 600);
+        };
+        const cancel = () => { if (pressTimer) clearTimeout(pressTimer); };
+
+        el.addEventListener('touchstart',  start,  { passive: true });
+        el.addEventListener('touchend',    cancel);
+        el.addEventListener('touchmove',   cancel);
+        el.addEventListener('mousedown',   start);
+        el.addEventListener('mouseup',     cancel);
+        el.addEventListener('mouseleave',  cancel);
+        // Prevent default context menu on desktop
+        el.addEventListener('contextmenu', e => { e.preventDefault(); this.showContextMenu(el); });
+    },
+
+    showContextMenu(el) {
+        const courseKey  = el.dataset.courseKey;
+        const courseName = el.dataset.course;
+        const attendance = el.dataset.attendance;
+        const cancelled  = el.dataset.cancelled === 'true';
+
+        // Remove existing menu
+        document.querySelector('.schedule-context-menu')?.remove();
+
+        const menu = document.createElement('div');
+        menu.className = 'schedule-context-menu';
+        menu.innerHTML = `
+            <div class="context-menu-header">${courseName}</div>
+            ${!cancelled && attendance !== 'attended' ? `
+                <button class="context-menu-item" data-action="attended">
+                    <i class="bi bi-check2-circle"></i> Mark as Attended
+                </button>` : ''}
+            ${!cancelled && attendance !== 'missed' ? `
+                <button class="context-menu-item danger" data-action="missed">
+                    <i class="bi bi-x-circle"></i> Mark as Missed
+                </button>` : ''}
+            ${!cancelled ? `
+                <button class="context-menu-item warning" data-action="cancel">
+                    <i class="bi bi-slash-circle"></i> Cancel Class (Today)
+                </button>` : `
+                <button class="context-menu-item" data-action="uncancel">
+                    <i class="bi bi-arrow-counterclockwise"></i> Undo Cancel
+                </button>`}
+            <button class="context-menu-item close-item" data-action="close">
+                <i class="bi bi-x-lg"></i> Close
+            </button>
+        `;
+
+        document.body.appendChild(menu);
+
+        // Position near the element
+        const rect = el.getBoundingClientRect();
+        const menuH = 200;
+        const top = rect.bottom + menuH > window.innerHeight
+            ? rect.top - menuH
+            : rect.bottom + 8;
+        menu.style.top  = `${Math.max(8, top)}px`;
+        menu.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - 220))}px`;
+
+        // Handle actions
+        menu.querySelectorAll('[data-action]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const action = btn.dataset.action;
+                if (action === 'attended') {
+                    this.attendanceState[courseKey] = 'attended';
+                    this.toastAnswered[courseKey]   = true;
+                    this.saveAttendance();
+                    NotificationManager.add('done', 'Marked as Attended', `${courseName} — nice!`, `att-done-${courseKey}-manual`);
+                    this.dismissActiveToast();
+                } else if (action === 'missed') {
+                    this.attendanceState[courseKey] = 'missed';
+                    this.toastAnswered[courseKey]   = true;
+                    this.saveAttendance();
+                    NotificationManager.add('missed', 'Marked as Missed', courseName, `att-miss-${courseKey}-manual`);
+                } else if (action === 'cancel') {
+                    this.cancelState[courseKey] = true;
+                    this.toastAnswered[courseKey] = true;
+                    this.saveAttendance();
+                    NotificationManager.add('upcoming', 'Class Cancelled', `${courseName} marked as cancelled today.`, `cancel-${courseKey}`);
+                } else if (action === 'uncancel') {
+                    delete this.cancelState[courseKey];
+                    delete this.toastAnswered[courseKey];
+                    this.saveAttendance();
+                }
+                menu.remove();
+                this.renderTodaySchedule();
+            });
+        });
+
+        // Close on outside click
+        setTimeout(() => {
+            document.addEventListener('click', function handler(e) {
+                if (!menu.contains(e.target)) {
+                    menu.remove();
+                    document.removeEventListener('click', handler);
+                }
+            });
+        }, 100);
+    },
+
+    // ─── DUE TASKS ──────────────────────────────────────────────────────────
     renderDueTasks() {
         const container = document.getElementById('todayTasks');
         const today     = new Date(); today.setHours(0,0,0,0);
@@ -1832,8 +2016,7 @@ const TodayManager = {
 
         const dueSoon = AppState.tasks.filter(t => {
             if (t.completed) return false;
-            const d = new Date(t.dueDate + 'T00:00:00');
-            return d <= in3Days;
+            return new Date(t.dueDate + 'T00:00:00') <= in3Days;
         }).sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
 
         if (dueSoon.length === 0) {
@@ -1849,57 +2032,81 @@ const TodayManager = {
             const due       = new Date(task.dueDate + 'T00:00:00');
             const isOverdue = due < today;
             const isToday   = due.getTime() === today.getTime();
-            let statusClass = '', icon = 'bi-clock', dueText = 'Due ' + task.dueDate;
+            let sc = '', icon = 'bi-clock', dueText = 'Due ' + task.dueDate;
 
-            if (isOverdue)    { statusClass = 'overdue';   icon = 'bi-exclamation-triangle-fill'; dueText = 'Overdue!'; }
-            else if (isToday) { statusClass = 'due-today'; icon = 'bi-alarm';                     dueText = 'Due Today'; }
+            if (isOverdue)    { sc = 'overdue';   icon = 'bi-exclamation-triangle-fill'; dueText = 'Overdue!'; }
+            else if (isToday) { sc = 'due-today'; icon = 'bi-alarm';                     dueText = 'Due Today'; }
 
             return `
-                <div class="today-task-item ${statusClass}">
-                    <i class="bi ${icon} today-task-icon ${statusClass}"></i>
+                <div class="today-task-item ${sc}">
+                    <i class="bi ${icon} today-task-icon ${sc}"></i>
                     <div class="today-task-info">
                         <h5>${task.title}</h5>
                         <p>${task.course}</p>
                     </div>
-                    <span class="today-task-due ${statusClass}">${dueText}</span>
+                    <span class="today-task-due ${sc}">${dueText}</span>
                 </div>`;
         }).join('');
     },
 
+    // ─── TIME PARSING ────────────────────────────────────────────────────────
     parseTime(timeString) {
-        const s = timeString.split('-')[0].trim();
-        const m = s.match(/(\d+):(\d+)\s*(AM|PM)?/i);
+        // ✅ Fix Bug 3: properly handle AM/PM from full time range string
+        const fullUpper = timeString.toUpperCase();
+        const part      = timeString.split('-')[0].trim();
+        const m         = part.match(/(\d+):(\d+)\s*(AM|PM)?/i);
         if (!m) return 0;
-        let h = parseInt(m[1]), min = parseInt(m[2]);
-        const period = m[3] ? m[3].toUpperCase() : null;
+
+        let h   = parseInt(m[1]);
+        let min = parseInt(m[2]);
+        let period = m[3] ? m[3].toUpperCase() : null;
+
+        // If start has no AM/PM, infer from the full string
+        if (!period) {
+            if (fullUpper.includes('PM')) period = 'PM';
+            else if (fullUpper.includes('AM')) period = 'AM';
+        }
+
         if (period === 'PM' && h !== 12) h += 12;
         if (period === 'AM' && h === 12) h = 0;
         return h * 60 + min;
     },
 
     parseEndTime(timeString) {
-        const parts = timeString.split('-');
+        const parts     = timeString.split('-');
+        const fullUpper = timeString.toUpperCase();
         if (parts.length < 2) return this.parseTime(timeString) + 60;
-        return this.parseTime(parts[1].trim() + (timeString.toUpperCase().includes('PM') ? ' PM' : ''));
+
+        const endPart = parts[1].trim();
+        const m       = endPart.match(/(\d+):(\d+)\s*(AM|PM)?/i);
+        if (!m) return this.parseTime(timeString) + 60;
+
+        let h = parseInt(m[1]), min = parseInt(m[2]);
+        let period = m[3] ? m[3].toUpperCase() : null;
+        if (!period && fullUpper.includes('PM')) period = 'PM';
+        if (!period && fullUpper.includes('AM')) period = 'AM';
+
+        if (period === 'PM' && h !== 12) h += 12;
+        if (period === 'AM' && h === 12) h = 0;
+        return h * 60 + min;
     },
 
     checkClassStatus(timeString, currentTime) {
         const times = timeString.split('-').map(t => t.trim());
         if (times.length !== 2) return { isNow: false, isUpcoming: false, isDone: false };
-
-        const startTime = this.parseTime(times[0]);
-        const endTime   = this.parseTime(times[1]);
-
+        const start = this.parseTime(timeString);
+        const end   = this.parseEndTime(timeString);
         return {
-            isNow:     currentTime >= startTime && currentTime < endTime,
-            isUpcoming: currentTime < startTime && (startTime - currentTime) <= 30,
-            isDone:    currentTime > endTime
+            isNow:     currentTime >= start && currentTime < end,
+            isUpcoming: currentTime < start && (start - currentTime) <= 30,
+            isDone:    currentTime >= end   // ✅ only after class actually ends
         };
     },
 
+    // ─── NOTIFICATION CHECK ──────────────────────────────────────────────────
     startNotificationCheck() {
-        this.notificationInterval = setInterval(() => this.checkAll(), 60000);
         this.checkAll();
+        this.notificationInterval = setInterval(() => this.checkAll(), 60000);
     },
 
     checkAll() {
@@ -1908,44 +2115,51 @@ const TodayManager = {
     },
 
     checkUpcomingClasses() {
-        const today   = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-        const now     = new Date();
-        const current = now.getHours() * 60 + now.getMinutes();
+        const todayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+        const current   = new Date().getHours() * 60 + new Date().getMinutes();
 
         AppState.schedules.forEach(schedule => {
             const days  = schedule.day.split(',').map(d => d.trim());
             const times = schedule.time.split('/').map(t => t.trim());
 
             days.forEach((day, i) => {
-                if (day !== today) return;
-                const timeForDay  = times[i] || times[0];
-                const startTime   = this.parseTime(timeForDay);
-                const minutesLeft = startTime - current;
-                const courseKey   = `${schedule.course}-${timeForDay}`;
-                const toastKey    = `toast-${courseKey}`;
-                const attended    = this.attendanceState[courseKey];
+                if (day !== todayName) return;
 
-                if (attended) return; // Already responded
+                const rawTime   = times[i] || times[0];
+                const startTime = this.parseTime(rawTime);
+                const endTime   = this.parseEndTime(rawTime);
+                const minsLeft  = startTime - current;
+                const courseKey = `${schedule.course}-${rawTime}`;
 
-                // 10-minute warning → show attendance toast
-                if (minutesLeft >= 9 && minutesLeft <= 11 && !this.notifiedKeys.has(toastKey)) {
-                    this.notifiedKeys.add(toastKey);
-                    const formatted = ScheduleManager.formatTimeWithAMPM(timeForDay);
+                // ✅ Fix Bug 1: Only fire notifications when class hasn't started yet
+                if (current >= endTime) return;         // class already over
+                if (current >= startTime) return;       // class in progress, no toast
+                if (this.toastAnswered[courseKey]) return; // already answered
+                if (this.cancelState[courseKey]) return;   // cancelled
 
-                    NotificationManager.add(
-                        'upcoming',
-                        'Class in 10 minutes!',
-                        `${schedule.course} starts at ${formatted} — Room ${schedule.room}`,
-                        `upcoming-${courseKey}`
-                    );
+                // Within 10 minutes → show/re-show toast
+                if (minsLeft <= 10 && minsLeft >= 0) {
+                    const snoozed     = this.toastSnoozed[courseKey] || 0;
+                    const snoozeReady = Date.now() - snoozed >= 2 * 60 * 1000; // 2 min
 
-                    this.showAttendanceToast(
-                        `🎓 ${schedule.course} starts in 10 minutes!`,
-                        `Room: ${schedule.room} at ${formatted}\nAre you heading to class?`,
-                        'class',
-                        courseKey,
-                        schedule.course
-                    );
+                    if (snoozeReady) {
+                        const formatted = ScheduleManager.formatTimeWithAMPM(rawTime);
+
+                        // Add to bell panel only once
+                        NotificationManager.add(
+                            'upcoming', 'Class in 10 minutes!',
+                            `${schedule.course} starts at ${formatted} — Room ${schedule.room}`,
+                            `upcoming-${courseKey}`
+                        );
+
+                        // ✅ Always re-show toast every 2 min until answered
+                        this.showAttendanceToast(
+                            `🎓 ${schedule.course} starts in ${minsLeft} min!`,
+                            `Room: ${schedule.room} · ${formatted}\nAre you heading to class?`,
+                            courseKey,
+                            schedule.course
+                        );
+                    }
                 }
             });
         });
@@ -1961,19 +2175,17 @@ const TodayManager = {
             const isOver  = due < today;
             const taskKey = `task-${task.title}-${task.dueDate}`;
 
-            if ((isToday || isOver) && !this.notifiedKeys.has(taskKey)) {
-                this.notifiedKeys.add(taskKey);
+            if ((isToday || isOver) && !this.toastAnswered[taskKey]) {
                 const type  = isOver ? 'overdue' : 'due-today';
                 const label = isOver ? 'Task Overdue!' : 'Task Due Today!';
-
                 NotificationManager.add(type, label, `"${task.title}" for ${task.course}`, taskKey);
-
-                this.showTaskToast(task, index, isOver);
+                this.showTaskToast(task, index, isOver, taskKey);
             }
         });
     },
 
-    showAttendanceToast(title, body, type, courseKey, courseName) {
+    // ─── TOAST: ATTENDANCE ───────────────────────────────────────────────────
+    showAttendanceToast(title, body, courseKey, courseName) {
         this.dismissActiveToast();
         const toast = document.getElementById('attendanceToast');
         document.getElementById('toastTitle').textContent = title;
@@ -1982,45 +2194,46 @@ const TodayManager = {
         const yesBtn = document.getElementById('toastYesBtn');
         const noBtn  = document.getElementById('toastNoBtn');
 
-        yesBtn.textContent = '✅ Yes, I\'m in class!';
-        noBtn.textContent  = 'Not going';
+        // ✅ Updated button labels
+        yesBtn.textContent = "✅ I'm in class!";
+        noBtn.textContent  = "🕐 Not yet";
 
-        // Remove old listeners
         const newYes = yesBtn.cloneNode(true);
         const newNo  = noBtn.cloneNode(true);
         yesBtn.parentNode.replaceChild(newYes, yesBtn);
-        noBtn.parentNode.replaceChild(newNo, noBtn);
+        noBtn.parentNode.replaceChild(newNo,  noBtn);
 
         newYes.addEventListener('click', () => {
             this.attendanceState[courseKey] = 'attended';
+            this.toastAnswered[courseKey]   = true;
             this.saveAttendance();
-            NotificationManager.add('done', 'Marked as Attended', `${courseName} — nice!`, `att-done-${courseKey}`);
+            NotificationManager.add('done', 'Marked as Attended',
+                `${courseName} — nice!`, `att-done-${courseKey}`);
             this.dismissActiveToast();
             this.renderTodaySchedule();
         });
 
         newNo.addEventListener('click', () => {
-            this.attendanceState[courseKey] = 'missed';
-            this.saveAttendance();
-            NotificationManager.add('missed', 'Marked as Missed', `${courseName}`, `att-miss-${courseKey}`);
+            // ✅ "Not yet" → snooze 2 min, keep showing
+            this.toastSnoozed[courseKey] = Date.now();
             this.dismissActiveToast();
-            this.renderTodaySchedule();
+            // Will re-show next checkAll cycle (in ≤2 min)
         });
 
         toast.classList.add('active');
         this.activeToast = toast;
-
-        // Auto-dismiss after 60 seconds
-        setTimeout(() => { if (toast.classList.contains('active')) this.dismissActiveToast(); }, 60000);
+        // No auto-dismiss — stays until answered
     },
 
-    showTaskToast(task, index, isOverdue) {
+    // ─── TOAST: TASK ─────────────────────────────────────────────────────────
+    showTaskToast(task, index, isOverdue, taskKey) {
         this.dismissActiveToast();
         const toast = document.getElementById('attendanceToast');
         const label = isOverdue ? '⚠️ Task Overdue!' : '⏰ Task Due Today!';
 
         document.getElementById('toastTitle').textContent = label;
-        document.getElementById('toastBody').textContent  = `"${task.title}" for ${task.course}. Did you finish it?`;
+        document.getElementById('toastBody').textContent  =
+            `"${task.title}" for ${task.course}. Did you finish it?`;
 
         const yesBtn = document.getElementById('toastYesBtn');
         const noBtn  = document.getElementById('toastNoBtn');
@@ -2031,24 +2244,29 @@ const TodayManager = {
         const newYes = yesBtn.cloneNode(true);
         const newNo  = noBtn.cloneNode(true);
         yesBtn.parentNode.replaceChild(newYes, yesBtn);
-        noBtn.parentNode.replaceChild(newNo, noBtn);
+        noBtn.parentNode.replaceChild(newNo,  noBtn);
 
         newYes.addEventListener('click', () => {
             AppState.tasks[index].completed = true;
             AppState.save('tasks');
             TaskManager.render();
             this.renderDueTasks();
-            NotificationManager.add('done', 'Task Completed!', `"${task.title}" marked as done.`, `task-done-${task.title}`);
+            NotificationManager.add('done', 'Task Completed!',
+                `"${task.title}" marked as done.`, `task-done-${task.title}`);
+            this.toastAnswered[taskKey] = true;
+            this.saveAttendance();
             this.dismissActiveToast();
         });
 
         newNo.addEventListener('click', () => {
+            this.toastAnswered[taskKey] = true;
+            this.saveAttendance();
             this.dismissActiveToast();
         });
 
         toast.classList.add('active');
         this.activeToast = toast;
-        setTimeout(() => { if (toast.classList.contains('active')) this.dismissActiveToast(); }, 60000);
+        setTimeout(() => { if (toast.classList.contains('active')) this.dismissActiveToast(); }, 30000);
     },
 
     dismissActiveToast() {
@@ -2057,10 +2275,6 @@ const TodayManager = {
             this.activeToast = null;
         }
     },
-
-    destroy() {
-        if (this.notificationInterval) clearInterval(this.notificationInterval);
-    }
 };
 
 // ===================================
