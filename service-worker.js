@@ -1,7 +1,7 @@
-// Student Hub - Service Worker v1.1.5
-// Fix: Missed class timing, sort order, long-press menu, cancelled class
+// Student Hub - Service Worker v1.3.4
+// Major: Fix: Bottom nav now properly hides on Admin and Projects pages
 
-const CACHE_NAME = 'student-hub-v16';
+const CACHE_NAME = 'student-hub-v24';
 const BASE_PATH = '/student-hubv2';
 
 // Files to cache

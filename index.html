@@ -229,8 +229,8 @@
                 </div>
 
                 <!-- Dashboard Grid -->
-                <div class="dashboard-grid">
-                    <!-- Today's Overview Section (New!) -->
+                <!-- Only Today's Overview remains on dashboard -->
+                <div class="dashboard-grid dashboard-grid-clean">
                     <div class="dashboard-card today-overview-card" style="grid-column: 1 / -1;">
                         <div class="card-header">
                             <h2><i class="bi bi-calendar-day"></i> Today's Overview</h2>
@@ -238,7 +238,6 @@
                         </div>
                         <div class="card-content">
                             <div class="today-grid">
-                                <!-- Today's Schedule -->
                                 <div class="today-section">
                                     <h3><i class="bi bi-clock"></i> Today's Classes</h3>
                                     <div id="todaySchedule" class="today-schedule">
@@ -248,8 +247,6 @@
                                         </div>
                                     </div>
                                 </div>
-                                
-                                <!-- Tasks Due Today/Soon -->
                                 <div class="today-section">
                                     <h3><i class="bi bi-exclamation-circle"></i> Tasks Due Soon</h3>
                                     <div id="todayTasks" class="today-tasks">
@@ -262,89 +259,9 @@
                             </div>
                         </div>
                     </div>
-
-                    <!-- Schedule Section -->
-                    <div class="dashboard-card schedule-card">
-                        <div class="card-header">
-                            <h2><i class="bi bi-calendar-week"></i> Weekly Schedule</h2>
-                        </div>
-                        <div class="card-content">
-                            <div id="scheduleDisplay" class="schedule-display">
-                                <div class="empty-state">
-                                    <i class="bi bi-calendar-x"></i>
-                                    <p>No schedule yet. Add courses in Admin Panel!</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Tasks Section -->
-                    <div class="dashboard-card tasks-card">
-                        <div class="card-header">
-                            <h2><i class="bi bi-check2-square"></i> Tasks</h2>
-                            <button class="btn btn-primary btn-sm" id="addTaskBtn">
-                                <i class="bi bi-plus-lg"></i> Add Task
-                            </button>
-                        </div>
-                        <div class="card-content">
-                            <div class="task-filters">
-                                <button class="filter-btn active" data-filter="all">All</button>
-                                <button class="filter-btn" data-filter="pending">Pending</button>
-                                <button class="filter-btn" data-filter="completed">Completed</button>
-                            </div>
-                            <div id="tasksList" class="tasks-list">
-                                <div class="empty-state">
-                                    <i class="bi bi-clipboard-x"></i>
-                                    <p>No tasks yet. Add one to get started!</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Grades Section -->
-                    <div class="dashboard-card grades-card">
-                        <div class="card-header">
-                            <h2><i class="bi bi-graph-up"></i> Grades & GPA</h2>
-                            <button class="btn btn-primary btn-sm" id="addGradeBtn">
-                                <i class="bi bi-plus-lg"></i> Add Grade
-                            </button>
-                        </div>
-                        <div class="card-content">
-                            <div class="gpa-display">
-                                <div class="gpa-circle">
-                                    <span class="gpa-value" id="gpaValue">0.00</span>
-                                    <span class="gpa-label">GPA/GWA</span>
-                                </div>
-                            </div>
-                            <div id="gradesList" class="grades-list">
-                                <div class="empty-state">
-                                    <i class="bi bi-file-earmark-bar-graph"></i>
-                                    <p>No grades recorded yet.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Achievements Section -->
-                    <div class="dashboard-card achievements-card">
-                        <div class="card-header">
-                            <h2><i class="bi bi-award"></i> Achievements</h2>
-                            <button class="btn btn-primary btn-sm" id="addAchievementBtn">
-                                <i class="bi bi-plus-lg"></i> Add
-                            </button>
-                        </div>
-                        <div class="card-content">
-                            <div id="achievementsList" class="achievements-list">
-                                <div class="empty-state">
-                                    <i class="bi bi-star"></i>
-                                    <p>No achievements yet. Start celebrating your wins!</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
-                
-                <!-- Dashboard Modal -->
+
+                <!-- Dashboard Modal (kept for existing modal usage) -->
                 <div class="modal-overlay" id="dashboardModal">
                     <div class="modal">
                         <div class="modal-header">
@@ -357,6 +274,156 @@
                     </div>
                 </div>
             </section>
+
+            <!-- ═══════════════════════════════════════════
+                 SECTION MODALS (Bottom Nav)
+                 ═══════════════════════════════════════════ -->
+
+            <!-- Schedule Modal -->
+            <!-- ════════════════════════════════════════
+                 SCHEDULE PAGE
+                 ════════════════════════════════════════ -->
+            <section class="page" id="schedule-page">
+                <div class="page-header">
+                    <div class="page-header-text">
+                        <h1><i class="bi bi-calendar3"></i> Weekly Schedule</h1>
+                        <p>Your class timetable for the week</p>
+                    </div>
+                </div>
+                <div class="page-content">
+                    <div id="scheduleDisplay" class="schedule-display">
+                        <div class="empty-state">
+                            <i class="bi bi-calendar-x"></i>
+                            <p>No schedule yet. Add courses in Admin Panel!</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ════════════════════════════════════════
+                 TASKS PAGE
+                 ════════════════════════════════════════ -->
+            <section class="page" id="tasks-page">
+                <div class="page-header">
+                    <div class="page-header-text">
+                        <h1><i class="bi bi-check2-square"></i> Tasks</h1>
+                        <p>Manage your assignments and deadlines</p>
+                    </div>
+                </div>
+                <div class="page-content">
+                    <div class="task-filters">
+                        <button class="filter-btn active" data-filter="all">All</button>
+                        <button class="filter-btn" data-filter="pending">Pending</button>
+                        <button class="filter-btn" data-filter="completed">Completed</button>
+                    </div>
+                    <div id="tasksList" class="tasks-list">
+                        <div class="empty-state">
+                            <i class="bi bi-clipboard-x"></i>
+                            <p>No tasks yet. Add one to get started!</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tasks Page Modal -->
+            <div class="modal-overlay" id="tasksModal">
+                <div class="modal">
+                    <div class="modal-header">
+                        <h2 id="tasksModalTitle">Modal Title</h2>
+                        <button class="modal-close" id="tasksModalClose">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                    <div class="modal-content" id="tasksModalContent"></div>
+                </div>
+            </div>
+
+            <!-- FAB for Tasks -->
+            <button class="fab-btn" id="fabAddTask" style="display: none;" title="Add Task">
+                <i class="bi bi-plus-lg"></i>
+            </button>
+
+            <!-- ════════════════════════════════════════
+                 GRADES PAGE
+                 ════════════════════════════════════════ -->
+            <section class="page" id="grades-page">
+                <div class="page-header">
+                    <div class="page-header-text">
+                        <h1><i class="bi bi-bar-chart-fill"></i> Grades & GPA</h1>
+                        <p>Track your academic performance</p>
+                    </div>
+                </div>
+                <div class="page-content">
+                    <div class="gpa-display">
+                        <div class="gpa-circle">
+                            <span class="gpa-value" id="gpaValue">0.00</span>
+                            <span class="gpa-label">GPA/GWA</span>
+                        </div>
+                    </div>
+                    <div id="gradesList" class="grades-list">
+                        <div class="empty-state">
+                            <i class="bi bi-file-earmark-bar-graph"></i>
+                            <p>No grades recorded yet.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Grades Page Modal -->
+            <div class="modal-overlay" id="gradesModal">
+                <div class="modal">
+                    <div class="modal-header">
+                        <h2 id="gradesModalTitle">Modal Title</h2>
+                        <button class="modal-close" id="gradesModalClose">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                    <div class="modal-content" id="gradesModalContent"></div>
+                </div>
+            </div>
+
+            <!-- FAB for Grades -->
+            <button class="fab-btn" id="fabAddGrade" style="display: none;" title="Add Grade">
+                <i class="bi bi-plus-lg"></i>
+            </button>
+
+            <!-- ════════════════════════════════════════
+                 ACHIEVEMENTS PAGE
+                 ════════════════════════════════════════ -->
+            <section class="page" id="achievements-page">
+                <div class="page-header">
+                    <div class="page-header-text">
+                        <h1><i class="bi bi-award"></i> Achievements</h1>
+                        <p>Celebrate your wins and milestones</p>
+                    </div>
+                </div>
+                <div class="page-content">
+                    <div id="achievementsList" class="achievements-list">
+                        <div class="empty-state">
+                            <i class="bi bi-star"></i>
+                            <p>No achievements yet. Start celebrating your wins!</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Achievements Page Modal -->
+            <div class="modal-overlay" id="achievementsModal">
+                <div class="modal">
+                    <div class="modal-header">
+                        <h2 id="achievementsModalTitle">Modal Title</h2>
+                        <button class="modal-close" id="achievementsModalClose">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                    <div class="modal-content" id="achievementsModalContent"></div>
+                </div>
+            </div>
+
+            <!-- FAB for Achievements -->
+            <button class="fab-btn" id="fabAddAchievement" style="display: none;" title="Add Achievement">
+                <i class="bi bi-plus-lg"></i>
+            </button>
 
             <!-- Admin Panel Page -->
             <section class="page" id="admin-page">
@@ -501,12 +568,14 @@
     </div>
 
     <!-- Task Focus View (Full Screen Pomodoro) -->
+    <!-- Task Focus View (Full Screen Pomodoro) -->
     <div class="focus-overlay" id="focusOverlay">
         <div class="focus-container">
             <button class="focus-close" id="focusClose">
                 <i class="bi bi-x-lg"></i>
             </button>
-            
+
+            <!-- Task info -->
             <div class="focus-header">
                 <div class="focus-task-info">
                     <h1 id="focusTaskTitle">Task Title</h1>
@@ -518,26 +587,68 @@
                     </div>
                 </div>
             </div>
-            
+
+            <!-- Timer -->
             <div class="focus-timer">
                 <div class="focus-timer-circle" id="focusTimerCircle">
                     <div class="focus-timer-time" id="focusTimerTime">25:00</div>
                     <div class="focus-timer-label" id="focusTimerLabel">Ready to Focus</div>
                 </div>
-                
                 <div class="focus-timer-progress">
                     <div class="progress-bar">
                         <div class="progress-fill" id="focusProgressFill"></div>
                     </div>
                 </div>
             </div>
-            
+
+\n            <!-- Music Player — below timer -->
+            <div class="focus-music-player" id="focusMusicPlayer">
+                <div class="music-player-main">
+                    <div class="music-art" id="musicArt">
+                        <i class="bi bi-music-note-beamed"></i>
+                        <div class="music-art-bars" id="musicArtBars">
+                            <span></span><span></span><span></span><span></span>
+                        </div>
+                    </div>
+                    <div class="music-info-controls">
+                        <div class="music-song-info">
+                            <div class="music-title-ticker">
+                                <span id="musicTitle">No song loaded</span>
+                            </div>
+                            <div class="music-meta" id="musicMeta">Add songs to get started</div>
+                        </div>
+                        <div class="music-controls">
+                            <button class="music-btn" id="musicShuffle" title="Shuffle">
+                                <i class="bi bi-shuffle"></i>
+                            </button>
+                            <button class="music-btn" id="musicPrev" title="Previous">
+                                <i class="bi bi-skip-start-fill"></i>
+                            </button>
+                            <button class="music-btn music-play-btn" id="musicPlay" title="Play/Pause">
+                                <i class="bi bi-play-fill"></i>
+                            </button>
+                            <button class="music-btn" id="musicNext" title="Next">
+                                <i class="bi bi-skip-end-fill"></i>
+                            </button>
+                            <button class="music-btn" id="musicLibraryBtn" title="Music Library">
+                                <i class="bi bi-collection-fill"></i>
+                            </button>
+                        </div>
+                        <div class="music-volume-row">
+                            <i class="bi bi-volume-down-fill music-vol-icon"></i>
+                            <input type="range" class="music-volume" id="musicVolume" min="0" max="100" value="70">
+                            <i class="bi bi-volume-up-fill music-vol-icon"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+\n            <!-- Controls (slimmed) -->
             <div class="focus-controls">
                 <div class="time-input-group">
-                    <label for="focusTimeInput">Set Timer (minutes):</label>
+                    <label for="focusTimeInput">Minutes:</label>
                     <input type="number" id="focusTimeInput" value="25" min="1" max="120">
                 </div>
-                
                 <div class="focus-buttons">
                     <button class="btn-focus btn-focus-primary" id="focusStart">
                         <i class="bi bi-play-fill"></i> Start Focus
@@ -550,7 +661,38 @@
                     </button>
                 </div>
             </div>
-            
+
+            <!-- Music Library Panel -->
+            <div class="music-library-panel" id="musicLibraryPanel" style="display:none;">
+                <div class="music-library-header">
+                    <h4><i class="bi bi-music-note-list"></i> Music Library</h4>
+                    <div class="music-library-actions">
+                        <button class="btn btn-primary btn-sm" id="musicUploadBtn">
+                            <i class="bi bi-upload"></i> Upload MP3
+                        </button>
+                        <button class="btn btn-secondary btn-sm" id="musicYoutubeBtn">
+                            <i class="bi bi-youtube"></i> YouTube
+                        </button>
+                        <button class="music-btn" id="musicLibraryClose">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                </div>
+                <input type="file" id="musicFileInput" accept="audio/*" multiple style="display:none;">
+                <div class="music-youtube-row" id="musicYoutubeRow" style="display:none;">
+                    <input type="text" class="music-url-input" id="musicYoutubeUrl"
+                           placeholder="Paste YouTube URL (requires internet)">
+                    <button class="btn btn-primary btn-sm" id="musicYoutubeAdd">Add</button>
+                </div>
+                <div class="music-track-list" id="musicTrackList">
+                    <div class="music-empty">
+                        <i class="bi bi-music-note-beamed"></i>
+                        <p>No songs yet — upload MP3s or add a YouTube link!</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats -->
             <div class="focus-stats">
                 <div class="stat-card-focus">
                     <i class="bi bi-check-circle"></i>
@@ -570,7 +712,6 @@
         </div>
     </div>
 
-    <!-- Attendance / Task Toast -->
     <div class="attendance-toast" id="attendanceToast">
         <div class="attendance-toast-header">
             <i class="bi bi-bell-fill"></i>
@@ -590,8 +731,32 @@
 
     <!-- Version Footer -->
     <footer class="app-footer">
-        Student Hub v1.1.5
+        Student Hub v1.3.4
     </footer>
+
+    <!-- Bottom Navigation Bar -->
+    <nav class="bottom-nav" id="bottomNav">
+        <button class="bottom-nav-item active" data-page="dashboard" title="Dashboard">
+            <i class="bi bi-house-fill"></i>
+            <span>Home</span>
+        </button>
+        <button class="bottom-nav-item" data-page="schedule" title="Weekly Schedule">
+            <i class="bi bi-calendar3"></i>
+            <span>Schedule</span>
+        </button>
+        <button class="bottom-nav-item" data-page="tasks" title="Tasks">
+            <i class="bi bi-check2-square"></i>
+            <span>Tasks</span>
+        </button>
+        <button class="bottom-nav-item" data-page="grades" title="Grades & GPA">
+            <i class="bi bi-bar-chart-fill"></i>
+            <span>Grades</span>
+        </button>
+        <button class="bottom-nav-item" data-page="achievements" title="Achievements">
+            <i class="bi bi-award"></i>
+            <span>Awards</span>
+        </button>
+    </nav>
 
     <script src="./js/app.js"></script>
 </body>
