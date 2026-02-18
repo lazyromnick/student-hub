@@ -399,7 +399,20 @@ const AuthManager = {
                     AchievementManager.init();
                     TodayManager.init();
                     FocusModeManager.init();
+                    MusicManager.init();
                     ProjectManager.init();
+                    BottomNavManager.init();
+
+                    // Wire up FAB buttons
+                    const fabTask = document.getElementById('fabAddTask');
+                    const fabGrade = document.getElementById('fabAddGrade');
+                    const fabAchieve = document.getElementById('fabAddAchievement');
+                    if (fabTask) fabTask.addEventListener('click', () => TaskManager.showAddForm());
+                    if (fabGrade) fabGrade.addEventListener('click', () => GradeManager.showAddForm());
+                    if (fabAchieve) fabAchieve.addEventListener('click', () => AchievementManager.showAddForm());
+
+                    // Navigate to dashboard on login
+                    NavigationManager.navigateTo('dashboard');
                 }, 500);
             } else {
                 errorMsg.style.display = 'flex';
@@ -486,9 +499,24 @@ const NavigationManager = {
             else p.classList.remove('active');
         });
 
-        // Show FAB only on Projects page
-        const fab = document.getElementById('fabAddProject');
-        if (fab) fab.style.display = page === 'projects' ? 'flex' : 'none';
+        this.currentPage = page;
+
+        // Show/hide FABs based on page
+        const fabProject = document.getElementById('fabAddProject');
+        const fabTask    = document.getElementById('fabAddTask');
+        const fabGrade   = document.getElementById('fabAddGrade');
+        const fabAchieve = document.getElementById('fabAddAchievement');
+
+        if (fabProject) fabProject.style.display = page === 'projects' ? 'flex' : 'none';
+        if (fabTask)    fabTask.style.display    = page === 'tasks'    ? 'flex' : 'none';
+        if (fabGrade)   fabGrade.style.display   = page === 'grades'   ? 'flex' : 'none';
+        if (fabAchieve) fabAchieve.style.display = page === 'achievements' ? 'flex' : 'none';
+
+        // Update bottom nav visibility and active state
+        if (window.BottomNavManager) {
+            BottomNavManager.updateVisibility(page);
+            BottomNavManager.syncWithPage(page);
+        }
     }
 };
 
@@ -537,10 +565,16 @@ const ProfileManager = {
         const dashboardModalClose = document.getElementById('dashboardModalClose');
         const adminModalClose = document.getElementById('adminModalClose');
         const projectsModalClose = document.getElementById('projectsModalClose');
+        const tasksModalClose = document.getElementById('tasksModalClose');
+        const gradesModalClose = document.getElementById('gradesModalClose');
+        const achievementsModalClose = document.getElementById('achievementsModalClose');
         
         dashboardModalClose.addEventListener('click', () => UIManager.closeModal('dashboardModal'));
         adminModalClose.addEventListener('click', () => UIManager.closeModal('adminModal'));
         projectsModalClose.addEventListener('click', () => UIManager.closeModal('projectsModal'));
+        tasksModalClose.addEventListener('click', () => UIManager.closeModal('tasksModal'));
+        gradesModalClose.addEventListener('click', () => UIManager.closeModal('gradesModal'));
+        achievementsModalClose.addEventListener('click', () => UIManager.closeModal('achievementsModal'));
         
         document.getElementById('dashboardModal').addEventListener('click', (e) => {
             if (e.target.id === 'dashboardModal') UIManager.closeModal('dashboardModal');
@@ -550,6 +584,15 @@ const ProfileManager = {
         });
         document.getElementById('projectsModal').addEventListener('click', (e) => {
             if (e.target.id === 'projectsModal') UIManager.closeModal('projectsModal');
+        });
+        document.getElementById('tasksModal').addEventListener('click', (e) => {
+            if (e.target.id === 'tasksModal') UIManager.closeModal('tasksModal');
+        });
+        document.getElementById('gradesModal').addEventListener('click', (e) => {
+            if (e.target.id === 'gradesModal') UIManager.closeModal('gradesModal');
+        });
+        document.getElementById('achievementsModal').addEventListener('click', (e) => {
+            if (e.target.id === 'achievementsModal') UIManager.closeModal('achievementsModal');
         });
     },
 
@@ -1153,7 +1196,7 @@ const ScheduleManager = {
 const TaskManager = {
     init() {
         this.render();
-        document.getElementById('addTaskBtn').addEventListener('click', () => this.showAddForm());
+        // Note: Add Task button is now a FAB, wired in app init
         
         const filterBtns = document.querySelectorAll('.filter-btn');
         filterBtns.forEach(btn => {
@@ -1259,7 +1302,7 @@ const TaskManager = {
             </form>
         `;
 
-        UIManager.showModal('dashboardModal', 'Add Task', form);
+        UIManager.showModal('tasksModal', 'Add Task', form);
         
         document.getElementById('taskForm').addEventListener('submit', (e) => {
             e.preventDefault();
@@ -1281,7 +1324,7 @@ const TaskManager = {
         AppState.tasks.push(task);
         AppState.save('tasks');
         this.render();
-        UIManager.closeModal('dashboardModal');
+        UIManager.closeModal('tasksModal');
         UIManager.notify('Task added successfully!', 'success');
         
         // Refresh today view
@@ -1326,7 +1369,7 @@ const TaskManager = {
 const GradeManager = {
     init() {
         this.render();
-        document.getElementById('addGradeBtn').addEventListener('click', () => this.showAddForm());
+        // Note: Add Grade button is now a FAB, wired in app init
     },
 
     render() {
@@ -1384,7 +1427,7 @@ const GradeManager = {
             </form>
         `;
 
-        UIManager.showModal('dashboardModal', 'Add Grade', form);
+        UIManager.showModal('gradesModal', 'Add Grade', form);
         
         const courseSelect = document.getElementById('gradeCourse');
         courseSelect.addEventListener('change', () => {
@@ -1410,7 +1453,7 @@ const GradeManager = {
         AppState.grades.push(grade);
         AppState.save('grades');
         this.render();
-        UIManager.closeModal('dashboardModal');
+        UIManager.closeModal('gradesModal');
         UIManager.notify('Grade added successfully!', 'success');
     },
 
@@ -1450,7 +1493,7 @@ const GradeManager = {
 const AchievementManager = {
     init() {
         this.render();
-        document.getElementById('addAchievementBtn').addEventListener('click', () => this.showAddForm());
+        // Note: Add Achievement button is now a FAB, wired in app init
     },
 
     render() {
@@ -1501,7 +1544,7 @@ const AchievementManager = {
             </form>
         `;
 
-        UIManager.showModal('dashboardModal', 'Add Achievement', form);
+        UIManager.showModal('achievementsModal', 'Add Achievement', form);
         
         document.getElementById('achievementForm').addEventListener('submit', (e) => {
             e.preventDefault();
@@ -1520,7 +1563,7 @@ const AchievementManager = {
         AppState.achievements.push(achievement);
         AppState.save('achievements');
         this.render();
-        UIManager.closeModal('dashboardModal');
+        UIManager.closeModal('achievementsModal');
         UIManager.notify('Achievement added successfully!', 'success');
     },
 
@@ -2383,6 +2426,7 @@ const FocusModeManager = {
     forceClose() {
         this.pause();
         this.reset();
+        MusicManager.autoPause(); // 🎵 Stop music on close
         document.getElementById('focusOverlay').classList.remove('active');
         document.body.style.overflow = 'auto';
         this.currentTask = null;
@@ -2406,7 +2450,10 @@ const FocusModeManager = {
         
         const circle = document.getElementById('focusTimerCircle');
         circle.classList.add('running');
-        
+
+        // 🎵 Auto-play music when Pomodoro starts
+        MusicManager.autoPlay();
+
         this.timer = setInterval(() => {
             if (this.timeLeft > 0) {
                 this.timeLeft--;
@@ -2427,7 +2474,10 @@ const FocusModeManager = {
         
         const circle = document.getElementById('focusTimerCircle');
         circle.classList.remove('running');
-        
+
+        // 🎵 Pause music when timer pauses
+        MusicManager.autoPause();
+
         if (this.timer) {
             clearInterval(this.timer);
             this.timer = null;
@@ -2526,6 +2576,403 @@ const FocusModeManager = {
             const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIGGS86eeXSwwRR57g8LljGgU3k9nxy3goBS1+zPLaizsLEWO56+mjUBELTKXh77BeCw==');
             audio.play().catch(() => {});
         } catch (e) {}
+    }
+};
+
+// ===================================
+// MUSIC MANAGER
+// ===================================
+const MusicManager = {
+    DB_NAME:    'StudentHubMusic',
+    DB_VERSION: 1,
+    STORE_NAME: 'tracks',
+    db:         null,
+
+    tracks:       [],   // { id, name, type, src? (youtube url) }
+    currentIndex: -1,
+    isPlaying:    false,
+    isShuffle:    false,
+    audio:        new Audio(),
+    playOrder:    [],   // shuffled indices
+
+    // ── Init ──────────────────────────────────────────────────────────────
+    async init() {
+        await this.openDB();
+        await this.loadTracks();
+        this.setupAudio();
+        this.setupControls();
+        this.renderLibrary();
+        this.updatePlayerUI();
+        // Restore volume
+        const vol = parseFloat(localStorage.getItem('musicVolume') ?? '0.7');
+        this.audio.volume = vol;
+        document.getElementById('musicVolume').value = vol * 100;
+    },
+
+    openDB() {
+        return new Promise((res, rej) => {
+            const req = indexedDB.open(this.DB_NAME, this.DB_VERSION);
+            req.onupgradeneeded = e => {
+                e.target.result.createObjectStore(this.STORE_NAME, { keyPath: 'id', autoIncrement: true });
+            };
+            req.onsuccess = e => { this.db = e.target.result; res(); };
+            req.onerror   = () => rej(req.error);
+        });
+    },
+
+    loadTracks() {
+        return new Promise((res) => {
+            if (!this.db) { res(); return; }
+            const tx  = this.db.transaction(this.STORE_NAME, 'readonly');
+            const req = tx.objectStore(this.STORE_NAME).getAll();
+            req.onsuccess = () => {
+                this.tracks = req.result || [];
+                this.buildPlayOrder();
+                res();
+            };
+            req.onerror = () => res();
+        });
+    },
+
+    saveTrack(track) {
+        // track = { name, type: 'local'|'youtube', src (youtube) | blob (local) }
+        return new Promise((res, rej) => {
+            const tx  = this.db.transaction(this.STORE_NAME, 'readwrite');
+            const req = tx.objectStore(this.STORE_NAME).add(track);
+            req.onsuccess = () => { res(req.result); };
+            req.onerror   = () => rej(req.error);
+        });
+    },
+
+    deleteTrack(id) {
+        return new Promise((res) => {
+            const tx = this.db.transaction(this.STORE_NAME, 'readwrite');
+            tx.objectStore(this.STORE_NAME).delete(id);
+            tx.oncomplete = res;
+        });
+    },
+
+    // ── Audio setup ───────────────────────────────────────────────────────
+    setupAudio() {
+        this.audio.addEventListener('ended',  () => this.playNext());
+        this.audio.addEventListener('error',  () => this.playNext());
+        this.audio.addEventListener('play',   () => this.onPlayState(true));
+        this.audio.addEventListener('pause',  () => this.onPlayState(false));
+    },
+
+    onPlayState(playing) {
+        this.isPlaying = playing;
+        const icon = document.getElementById('musicPlay')?.querySelector('i');
+        const bars = document.getElementById('musicArtBars');
+        if (icon) icon.className = playing ? 'bi bi-pause-fill' : 'bi bi-play-fill';
+        if (bars) bars.classList.toggle('playing', playing);
+    },
+
+    // ── Controls setup ────────────────────────────────────────────────────
+    setupControls() {
+        document.getElementById('musicPlay')?.addEventListener('click', () => this.togglePlay());
+        document.getElementById('musicNext')?.addEventListener('click', () => this.playNext());
+        document.getElementById('musicPrev')?.addEventListener('click', () => this.playPrev());
+
+        // Shuffle toggle
+        document.getElementById('musicShuffle')?.addEventListener('click', () => {
+            this.isShuffle = !this.isShuffle;
+            document.getElementById('musicShuffle').classList.toggle('active', this.isShuffle);
+            this.buildPlayOrder();
+        });
+
+        // Volume
+        document.getElementById('musicVolume')?.addEventListener('input', (e) => {
+            const vol = e.target.value / 100;
+            this.audio.volume = vol;
+            localStorage.setItem('musicVolume', vol);
+        });
+
+        // Library toggle
+        document.getElementById('musicLibraryBtn')?.addEventListener('click', () => this.toggleLibrary());
+        document.getElementById('musicLibraryClose')?.addEventListener('click', () => this.toggleLibrary());
+
+        // Upload MP3
+        document.getElementById('musicUploadBtn')?.addEventListener('click', () => {
+            document.getElementById('musicFileInput').click();
+        });
+        document.getElementById('musicFileInput')?.addEventListener('change', (e) => {
+            this.handleFileUpload(e.target.files);
+            e.target.value = '';
+        });
+
+        // YouTube toggle row
+        document.getElementById('musicYoutubeBtn')?.addEventListener('click', () => {
+            const row = document.getElementById('musicYoutubeRow');
+            row.style.display = row.style.display === 'none' ? 'flex' : 'none';
+        });
+        document.getElementById('musicYoutubeAdd')?.addEventListener('click', () => this.addYouTube());
+    },
+
+    // ── File upload ───────────────────────────────────────────────────────
+    async handleFileUpload(files) {
+        const allowed = ['audio/mpeg','audio/wav','audio/ogg','audio/mp4','audio/aac','audio/flac'];
+        let added = 0;
+        for (const file of files) {
+            if (!allowed.includes(file.type) && !file.name.match(/\.(mp3|wav|ogg|m4a|aac|flac)$/i)) continue;
+            const buf  = await file.arrayBuffer();
+            const blob = new Blob([buf], { type: file.type || 'audio/mpeg' });
+            const name = file.name.replace(/\.[^.]+$/, '');
+            try {
+                const id = await this.saveTrack({ name, type: 'local', blob });
+                this.tracks.push({ id, name, type: 'local', blob });
+                added++;
+            } catch(e) {
+                UIManager.notify('Storage full — try removing some songs first.', 'error');
+            }
+        }
+        if (added) {
+            this.buildPlayOrder();
+            this.renderLibrary();
+            UIManager.notify(`🎵 ${added} song${added > 1 ? 's' : ''} added!`, 'success');
+            if (this.currentIndex === -1) this.setCurrent(0);
+        }
+    },
+
+    // ── YouTube add ───────────────────────────────────────────────────────
+    async addYouTube() {
+        const input = document.getElementById('musicYoutubeUrl');
+        const raw   = input.value.trim();
+        if (!raw) return;
+
+        // Extract YouTube video ID
+        const match = raw.match(/(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{11})/);
+        if (!match) { UIManager.notify('Invalid YouTube URL — please paste a full video link.', 'error'); return; }
+
+        const videoId = match[1];
+        const src     = `https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1`;
+        const name    = `YouTube: ${videoId}`;
+
+        try {
+            const id = await this.saveTrack({ name, type: 'youtube', src, videoId });
+            this.tracks.push({ id, name, type: 'youtube', src, videoId });
+            this.buildPlayOrder();
+            this.renderLibrary();
+            UIManager.notify('🎵 YouTube track added! Requires internet to play.', 'success');
+            input.value = '';
+            if (this.currentIndex === -1) this.setCurrent(this.tracks.length - 1);
+        } catch(e) {
+            UIManager.notify('Failed to save YouTube track.', 'error');
+        }
+    },
+
+    // ── Playback ──────────────────────────────────────────────────────────
+    buildPlayOrder() {
+        const indices = this.tracks.map((_, i) => i);
+        if (this.isShuffle) {
+            // Fisher-Yates shuffle
+            for (let i = indices.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [indices[i], indices[j]] = [indices[j], indices[i]];
+            }
+        }
+        this.playOrder = indices;
+    },
+
+    setCurrent(index) {
+        if (index < 0 || index >= this.tracks.length) return;
+        this.currentIndex = index;
+        const track = this.tracks[index];
+        this.audio.pause();
+
+        if (track.type === 'local' && track.blob) {
+            const url = URL.createObjectURL(track.blob);
+            this.audio.src = url;
+        } else if (track.type === 'youtube') {
+            // YouTube can't play via Audio tag — show iframe note
+            this.audio.src = '';
+        }
+
+        this.updatePlayerUI();
+        this.renderLibrary();
+    },
+
+    togglePlay() {
+        if (this.tracks.length === 0) {
+            UIManager.notify('Add some songs to the library first! 🎵', 'info');
+            this.toggleLibrary(true);
+            return;
+        }
+        if (this.currentIndex === -1) this.setCurrent(0);
+        const track = this.tracks[this.currentIndex];
+
+        if (track.type === 'youtube') {
+            UIManager.notify('YouTube tracks need internet. Open the link in your browser to play.', 'info');
+            return;
+        }
+
+        if (this.isPlaying) {
+            this.audio.pause();
+        } else {
+            this.audio.play().catch(() => UIManager.notify('Could not play audio.', 'error'));
+        }
+    },
+
+    autoPlay() {
+        if (this.tracks.length === 0) return;
+        if (this.currentIndex === -1) this.setCurrent(0);
+        const track = this.tracks[this.currentIndex];
+        if (track?.type === 'youtube') return; // can't autoplay youtube
+        if (!this.isPlaying) {
+            this.audio.play().catch(() => {});
+        }
+    },
+
+    autoPause() {
+        if (this.isPlaying) this.audio.pause();
+    },
+
+    playNext() {
+        if (this.tracks.length === 0) return;
+        const orderIdx = this.playOrder.indexOf(this.currentIndex);
+        const nextOrderIdx = (orderIdx + 1) % this.playOrder.length;
+        this.setCurrent(this.playOrder[nextOrderIdx]);
+        if (this.isPlaying) this.audio.play().catch(() => {});
+    },
+
+    playPrev() {
+        if (this.tracks.length === 0) return;
+        const orderIdx = this.playOrder.indexOf(this.currentIndex);
+        const prevOrderIdx = (orderIdx - 1 + this.playOrder.length) % this.playOrder.length;
+        this.setCurrent(this.playOrder[prevOrderIdx]);
+        if (this.isPlaying) this.audio.play().catch(() => {});
+    },
+
+    // ── UI updates ────────────────────────────────────────────────────────
+    updatePlayerUI() {
+        const track = this.tracks[this.currentIndex];
+        const titleEl = document.getElementById('musicTitle');
+        const metaEl  = document.getElementById('musicMeta');
+        if (!titleEl) return;
+
+        if (!track) {
+            titleEl.textContent = 'No song loaded';
+            metaEl.textContent  = 'Add songs to get started';
+            return;
+        }
+
+        titleEl.textContent = track.name;
+        metaEl.textContent  = track.type === 'youtube' ? '🔴 YouTube (needs internet)' : '🎵 Local file';
+
+        // Ticker scroll for long titles
+        const parent = titleEl.parentElement;
+        if (titleEl.scrollWidth > parent.clientWidth) {
+            parent.classList.add('scrolling');
+        } else {
+            parent.classList.remove('scrolling');
+        }
+    },
+
+    renderLibrary() {
+        const list = document.getElementById('musicTrackList');
+        if (!list) return;
+
+        if (this.tracks.length === 0) {
+            list.innerHTML = `
+                <div class="music-empty">
+                    <i class="bi bi-music-note-beamed"></i>
+                    <p>No songs yet — upload MP3s or add a YouTube link!</p>
+                </div>`;
+            return;
+        }
+
+        list.innerHTML = this.tracks.map((t, i) => `
+            <div class="music-track-item ${i === this.currentIndex ? 'playing' : ''}"
+                 data-index="${i}">
+                <span class="music-track-num">${i === this.currentIndex ? '▶' : i + 1}</span>
+                <div class="music-track-info">
+                    <div class="music-track-name">${t.name}</div>
+                    <div class="music-track-type">${t.type}</div>
+                </div>
+                ${t.type === 'youtube' ? '<span class="music-track-yt">YT</span>' : ''}
+                <button class="music-track-delete" data-id="${t.id}" title="Remove">
+                    <i class="bi bi-trash3"></i>
+                </button>
+            </div>`
+        ).join('');
+
+        // Click to play
+        list.querySelectorAll('.music-track-item').forEach(el => {
+            el.addEventListener('click', (e) => {
+                if (e.target.closest('.music-track-delete')) return;
+                const idx = parseInt(el.dataset.index);
+                this.setCurrent(idx);
+                if (this.tracks[idx]?.type !== 'youtube') {
+                    this.audio.play().catch(() => {});
+                }
+            });
+        });
+
+        // Delete buttons
+        list.querySelectorAll('.music-track-delete').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const id  = parseInt(btn.dataset.id);
+                const idx = this.tracks.findIndex(t => t.id === id);
+                await this.deleteTrack(id);
+                this.tracks.splice(idx, 1);
+                if (this.currentIndex >= this.tracks.length) this.currentIndex = this.tracks.length - 1;
+                this.buildPlayOrder();
+                this.renderLibrary();
+                this.updatePlayerUI();
+                if (this.currentIndex >= 0) this.setCurrent(this.currentIndex);
+            });
+        });
+    },
+
+    toggleLibrary(forceOpen = false) {
+        const panel = document.getElementById('musicLibraryPanel');
+        if (!panel) return;
+        const isHidden = panel.style.display === 'none';
+        panel.style.display = (isHidden || forceOpen) ? 'block' : 'none';
+        document.getElementById('musicLibraryBtn')?.classList.toggle('active', panel.style.display !== 'none');
+    }
+};
+
+// ===================================
+// PROJECT MANAGER
+// ===================================
+// ===================================
+// BOTTOM NAV MANAGER
+// ===================================
+const BottomNavManager = {
+    init() {
+        // Wire up all bottom nav buttons to navigate between pages
+        document.querySelectorAll('.bottom-nav-item[data-page]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const page = btn.dataset.page;
+                NavigationManager.navigateTo(page);
+                this.setActive(btn);
+            });
+        });
+    },
+
+    setActive(btn) {
+        document.querySelectorAll('.bottom-nav-item').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+    },
+
+    // Called by NavigationManager when page changes
+    syncWithPage(page) {
+        const btn = document.querySelector(`.bottom-nav-item[data-page="${page}"]`);
+        this.setActive(btn);
+    },
+
+    updateVisibility(page) {
+        const nav = document.getElementById('bottomNav');
+        if (!nav) return;
+        // Show bottom nav on dashboard + 4 section pages
+        const showOn = ['dashboard','schedule','tasks','grades','achievements'];
+        if (showOn.includes(page)) {
+            nav.classList.remove('hidden');
+        } else {
+            nav.classList.add('hidden');
+        }
     }
 };
 
@@ -2767,7 +3214,21 @@ document.addEventListener('DOMContentLoaded', () => {
             AchievementManager.init();
             TodayManager.init();
             FocusModeManager.init();
+            MusicManager.init();
             ProjectManager.init();
+            BottomNavManager.init();
+
+            // Wire up FAB buttons
+            const fabTask = document.getElementById('fabAddTask');
+            const fabGrade = document.getElementById('fabAddGrade');
+            const fabAchieve = document.getElementById('fabAddAchievement');
+            if (fabTask) fabTask.addEventListener('click', () => TaskManager.showAddForm());
+            if (fabGrade) fabGrade.addEventListener('click', () => GradeManager.showAddForm());
+            if (fabAchieve) fabAchieve.addEventListener('click', () => AchievementManager.showAddForm());
+
+            // Navigate to dashboard on initial load to show bottom nav
+            NavigationManager.navigateTo('dashboard');
+
             console.log('✅ All managers initialized');
         } else {
             console.log('🔓 User not logged in, showing auth page');
