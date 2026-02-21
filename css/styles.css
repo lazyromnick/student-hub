@@ -3534,7 +3534,14 @@ h1, h2, h3, h4, h5, h6 {
 .main-content { padding-bottom: 80px; }
 
 /* Hide bottom nav on auth page */
+/* Hide bottom nav on auth page */
 body:has(.auth-page.active) .bottom-nav { display: none !important; }
+
+/* Hide bottom nav on admin page */
+body:has(#admin-page.active) .bottom-nav { display: none !important; }
+
+/* Hide bottom nav on projects page */
+body:has(#projects-page.active) .bottom-nav { display: none !important; }
 
 /* ===================================
    PORTRAIT LOCK
